@@ -73,14 +73,22 @@ fwrite(
 radar_panels <- list()
 radar_endpoint_labels <- c(
   HALLMARK_MYOGENESIS = "Myogenesis",
-  HALLMARK_INTERFERON_GAMMA_RESPONSE = "IFN-gamma response",
-  HALLMARK_INTERFERON_ALPHA_RESPONSE = "IFN-alpha response",
-  HALLMARK_IL6_JAK_STAT3_SIGNALING = "IL6/JAK/STAT3 signalling",
-  HALLMARK_ALLOGRAFT_REJECTION = "Allograft rejection",
+  HALLMARK_INTERFERON_GAMMA_RESPONSE = "IFN-gamma",
+  HALLMARK_INTERFERON_ALPHA_RESPONSE = "IFN-alpha",
+  HALLMARK_IL6_JAK_STAT3_SIGNALING = "IL6/JAK/STAT3",
+  HALLMARK_ALLOGRAFT_REJECTION = "Allograft",
   `Silent Mutation Rate` = "Silent rate",
-  `Nonsilent Mutation Rate` = "Non-silent rate",
-  `Aneuploidy Score` = "Aneuploidy (immune atlas)",
-  `Aneuploidy score` = "Aneuploidy (Taylor)"
+  `Nonsilent Mutation Rate` = "Non-silent",
+  `Aneuploidy Score` = "Aneuploidy I",
+  `Aneuploidy score` = "Aneuploidy T",
+  `Lymphocyte Infiltration Signature Score` = "Lymph sig",
+  `TIL Regional Fraction` = "TIL fraction",
+  `MANTIS score` = "MANTIS",
+  `MSIsensor score` = "MSIsensor",
+  `SNV Neoantigens` = "SNV neoantigens",
+  `Macrophage Regulation` = "Macrophage",
+  `Leukocyte Fraction` = "Leukocyte frac",
+  `Deleted arm count` = "Deleted arms"
 )
 for (patient_index in seq_along(patient_ids)) {
   for (model_name in foundation_models) {

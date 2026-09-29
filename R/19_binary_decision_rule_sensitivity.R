@@ -12,7 +12,7 @@ model_names <- c("TITAN", "GigaSSL", "ProvGigaPath")
 components <- as.integer(cfg$analysis$components)
 component_ceiling <- max(components)
 fastpls_description <- packageDescription("fastPLS")
-fastpls_remote_sha <- as.character(fastpls_description$RemoteSha)
+fastpls_remote_sha <- if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
 make_fastpls_folds <- getFromNamespace(".make_single_cv_folds", "fastPLS")
 
 binary_targets <- rbindlist(list(

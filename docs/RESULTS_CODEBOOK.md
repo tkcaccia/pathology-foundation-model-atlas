@@ -26,9 +26,10 @@ membership-change file retains every gain or loss at balanced accuracy 0.60;
 the fold-threshold file records outer class counts, inner objectives, selected
 components and training-only thresholds.
 
-`foundation_model_fold_stability_selection.csv` defines the 560-task,
-revision-added fold audit: all primary union-positive pairs plus tasks within
-±0.05 of Q²=0.20 or balanced accuracy=0.60 for at least one representation.
+`foundation_model_fold_stability_selection.csv` defines the retrospective
+fold audit: all primary union-positive pairs plus tasks within
+±0.05 of Q²=0.20 or AUROC=0.60 for at least one representation. The file
+records the exact selected task count for the refreshed atlas.
 `foundation_model_fold_stability_repeats.csv` contains five new matched nested
 partitions for every selected task and representation. The companion
 `foundation_model_crossing_stability.csv` gives per-representation crossing
@@ -41,7 +42,7 @@ summaries without dichotomising at a threshold;
 representation remains leading across the new partitions; and
 `foundation_model_pairwise_repeat_stability.csv` reports repeat-specific
 paired effect differences and win counts. The two threshold-sensitivity
-files cover Q² 0.10–0.30 and balanced accuracy 0.55–0.65.
+files cover Q² 0.10–0.30 and AUROC 0.55–0.65.
 `foundation_model_fold_assignment_audit.csv` records the common fold hash and
 fold sizes for each task–repeat; patient-level OOF estimates are retained in
 `results/predictions/foundation_model_fold_stability_oof.rds`.
@@ -50,8 +51,8 @@ fold sizes for each task–repeat; patient-level OOF estimates are retained in
 and outcome type, task crossing percentages, unique endpoint-definition
 coverage, unweighted macro crossing percentages across endpoint families and
 cancers, and the largest contributing endpoint family. The matched atlas has
-187 exact endpoint definitions (56 continuous and 131 binary), compared with
-194 in the full TITAN task universe. `foundation_model_endpoint_definition_coverage.csv`
+239 exact endpoint definitions (108 continuous and 131 binary), compared with
+246 in the full TITAN task universe. `foundation_model_endpoint_definition_coverage.csv`
 is the compact definition-level denominator summary.
 `foundation_model_endpoint_cancer_retention.csv` reports every exact
 family–endpoint–source definition with its eligible and retained cancer counts
@@ -121,7 +122,7 @@ transformation, analysed and missing patients, expected measurement error,
 biological interpretation, assay-equivalence caveat and source reference.
 
 `endpoint_definition_dictionary.csv` collapses repeated cancer-specific tests
-to the 194 unique endpoint definitions. `endpoint_dictionary_summary.csv`
+to the 246 unique endpoint definitions. `endpoint_dictionary_summary.csv`
 summarises the measurement classes. The `same_histology_modality` flag is true
 only for TIL Regional Fraction, because that outcome was itself computationally
 derived from H&E images; it is not a molecular or directly counted immune assay.
@@ -150,13 +151,13 @@ morphology, or blinded pathologist review.
 ## Multiplicity and evidence-maturity files
 
 `foundation_model_evidence_maturity.csv` adds the inclusive crossing and
-revision-added sample-size maturity label to every matched representation-task
+retrospective sample-size maturity label to every matched representation-task
 row. `foundation_model_evidence_maturity_summary.csv` reports inclusive and
-standard-evidence denominators and crossings in parallel. The corresponding
+larger-sample denominators and crossings in parallel. The corresponding
 TITAN-only qualified-candidate files are
 `titan_candidate_evidence_maturity.csv` and
-`titan_candidate_evidence_maturity_summary.csv`. Continuous standard evidence
-requires n≥100; binary standard evidence requires at least 50 patients per
+`titan_candidate_evidence_maturity_summary.csv`. The larger-sample stratum
+requires n≥100 for continuous targets and at least 50 patients per binary
 class. These fields are descriptive and do not redefine statistical
 significance.
 
@@ -171,8 +172,8 @@ across-cancer/family, outcome-wide and atlas-wide denominator ranges.
 ## Robustness files
 
 - `*_repeated_nested_cv.csv`: five independently partitioned nested-CV runs;
-- `foundation_model_tss_grouped_sensitivity.csv`: one row for each of 340
-  union-positive tasks × three representations, containing primary, grouped and
+- `foundation_model_tss_grouped_sensitivity.csv`: one row for every
+  union-crossing task and each of the three representations, containing primary, grouped and
   matched-random metrics, threshold-retention status, code counts and fold hashes;
 - `foundation_model_tss_grouped_fold_audit.csv`: task-level confirmation of code
   separation, identical grouped folds across representations, exact matched-random
@@ -180,10 +181,10 @@ across-cancer/family, outcome-wide and atlas-wide denominator ranges.
 - `foundation_model_tss_grouped_summary.csv`: representation/outcome crossing
   denominators, retained crossings and median grouped changes;
 - `foundation_model_consensus_tss_crosstab.csv`: detailed cross-tabulation of
-  primary consensus, sample-size maturity, grouped retention and R1–R4 class;
+  primary consensus, sample-size maturity, grouped retention and deprecated R1–R4 tag;
 - `foundation_model_internal_robustness_classification.csv`: one row per
-  union-positive task with complete/partial/no grouped retention and the composite
-  internal prioritisation class;
+  union-crossing task with complete/partial/no grouped retention and a deprecated
+  database-navigation tag;
 - `foundation_model_tss_code_only_outcomes.csv`: code-only cross-validated outcome
   predictability on the matched common cohort;
 - `*_site_grouped_sensitivity.csv`: TCGA tissue-source-site-grouped folds;
@@ -222,7 +223,7 @@ across-cancer/family, outcome-wide and atlas-wide denominator ranges.
 - `source_manifest.csv`: source labels, DOIs, filenames, sizes and SHA-256
   digests; cBioPortal download URLs are in `cbioportal_download_manifest.csv`;
 - `software_manifest.csv`: installed versions, available remote commit
-  metadata and the explicitly pinned fastPLS/TCGAmutations sources.
+  metadata, the CRAN fastPLS release and the pinned TCGAmutations source.
 
 ## Model registry
 
@@ -230,7 +231,7 @@ across-cancer/family, outcome-wide and atlas-wide denominator ranges.
 objects include the exact input feature order and checksum, training ranges,
 aggregation rule, endpoint transformation and output units, class coding and
 priors, prediction rule, calibration and external-validation status, exact
-fastPLS version and Git commit, computation backend, and research-only intended
+fastPLS version and source repository, computation backend, and research-only intended
 use. The registry also records the exclusive rSVD configuration (10
 32 oversampling vectors and five power iterations, the fastPLS 0.3 defaults)
 and an analysis fingerprint

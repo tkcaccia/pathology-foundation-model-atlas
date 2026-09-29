@@ -147,39 +147,30 @@ theme_predictability <- function(base_size = 14) {
     )
 }
 
+same_histology_excluded <- sum(comparison$same_histology_modality %in% TRUE)
 p_breadth <- ggplot(
   breadth_long,
-  aes(crossing_rate, figure_class, fill = support_scope)
+  aes(crossing_rate, figure_class, colour = support_scope)
 ) +
-  geom_col(
-    position = position_dodge(width = 0.72),
-    width = 0.62,
-    colour = "white",
-    linewidth = 0.35
-  ) +
-  geom_text(
-    aes(label = sprintf("%s  (%.1f%%)", count_label, crossing_rate)),
-    position = position_dodge(width = 0.72),
-    hjust = -0.08,
-    size = 3.05,
-    colour = ink,
-    show.legend = FALSE
+  geom_point(
+    position = position_dodge(width = 0.55),
+    size = 3.2
   ) +
   scale_x_continuous(
-    limits = c(0, 90),
-    breaks = seq(0, 80, 20),
+    limits = c(0, 100),
+    breaks = seq(0, 100, 20),
     labels = function(x) paste0(x, "%"),
-    expand = expansion(mult = c(0, 0))
+    expand = expansion(mult = c(0.01, 0.01))
   ) +
-  scale_fill_manual(values = c(
+  scale_colour_manual(values = c(
     "At least one representation" = "#334E68",
     "All three representations" = "#2A9D8F"
   )) +
   labs(
-    x = "Eligible pairs reaching threshold (%)",
+    x = "Effect-threshold crossing rate (%)",
     y = NULL,
-    title = "A  Histology-predictable tumour-feature classes",
-    subtitle = "Crossings/eligible pairs; 11 same-H&E TIL tasks excluded."
+    title = "A  Crossing rates by reference-phenotype class",
+    subtitle = sprintf("Percent of eligible pairs; %d same-H&E tasks excluded.", same_histology_excluded)
   ) +
   theme_predictability(14) +
   theme(
@@ -189,7 +180,7 @@ p_breadth <- ggplot(
     panel.grid.major.x = element_line(colour = grid_colour, linewidth = 0.35),
     axis.text.y = element_text(size = 11.0)
   ) +
-  guides(fill = guide_legend(nrow = 1, byrow = TRUE))
+  guides(colour = guide_legend(nrow = 1, byrow = TRUE))
 
 p_leadership <- ggplot(
   leadership,
@@ -212,7 +203,7 @@ p_leadership <- ggplot(
     labels = function(x) paste0(x, "%"),
     expand = expansion(mult = c(0, 0))
   ) +
-  coord_cartesian(xlim = c(0, 100), clip = "off") +
+  coord_cartesian(xlim = c(0, 105), clip = "off") +
   scale_fill_manual(
     values = representation_colours,
     breaks = names(representation_labels),
@@ -222,7 +213,10 @@ p_leadership <- ggplot(
     x = "Pairs for which the representation had the highest observed effect",
     y = NULL,
     title = "Leading representation by tumour-feature class",
-    subtitle = "485 cross-modal threshold-crossing pairs; numbers are cancer-endpoint pair counts.",
+    subtitle = sprintf(
+      "%d cross-modal threshold-crossing pairs; labels show counts in segments at least 7%% wide.",
+      sum(comparison$any_crossing & comparison$same_histology_modality == FALSE)
+    ),
     caption = paste0(
       "Leader = highest patient-level out-of-fold Q-squared or AUROC under the common PLS-based probe.\n",
       "This descriptive rank does not test intrinsic model superiority."
@@ -233,7 +227,8 @@ p_leadership <- ggplot(
     legend.position = "bottom",
     legend.text = element_text(size = 12.5),
     axis.text.y = element_text(size = 12.2),
-    plot.caption = element_text(size = 10.2, margin = margin(t = 7))
+    plot.caption = element_text(size = 10.2, margin = margin(t = 7)),
+    plot.margin = margin(6, 18, 6, 6)
   ) +
   guides(fill = guide_legend(nrow = 1, byrow = TRUE))
 
@@ -262,7 +257,8 @@ if (nrow(binary_selected) < 9L || nrow(continuous_selected) < 9L) {
 }
 binary_selected[, display_label := sprintf(
   "%s: %s%s", tumor_type, endpoint,
-  fifelse(family == "driver_mutation", " mutation", "")
+  fifelse(family == "driver_mutation", " mutation",
+          fifelse(family == "oncogenic_pathway", " pathway alteration", ""))
 )]
 readable_endpoint <- function(x) {
   hallmark <- startsWith(x, "HALLMARK_")
@@ -316,12 +312,14 @@ continuous_long <- to_plot_long(continuous_selected)
 effect_plot <- function(data, threshold, x_limits, breaks, label_x, best_label_x,
                         title, subtitle, x_title) {
   ranges <- data[, .(
-    xmin = min(effect), xmax = max(effect), value_label = first(value_label),
+    xmin = min(effect), xmax = max(effect),
     best_representation = first(best_representation), best_label = first(best_label)
   ),
                  by = display_label]
   ggplot(data, aes(effect, display_label, colour = representation)) +
-    geom_vline(xintercept = threshold, linetype = 3, linewidth = 0.6, colour = "#7B8794") +
+    {if (!is.na(threshold)) geom_vline(
+      xintercept = threshold, linetype = 3, linewidth = 0.6, colour = "#7B8794"
+    )} +
     geom_segment(
       data = ranges,
       aes(x = xmin, xend = xmax, y = display_label, yend = display_label),
@@ -332,22 +330,13 @@ effect_plot <- function(data, threshold, x_limits, breaks, label_x, best_label_x
     geom_point(size = 3.1, stroke = 0.4) +
     geom_text(
       data = ranges,
-      aes(x = label_x, y = display_label, label = value_label),
-      inherit.aes = FALSE,
-      hjust = 0,
-      size = 3.35,
-      colour = ink,
-      family = "Arial"
-    ) +
-    geom_text(
-      data = ranges,
       aes(
         x = best_label_x, y = display_label,
         label = best_label, colour = best_representation
       ),
       inherit.aes = FALSE,
       hjust = 0,
-      size = 3.35,
+      size = 3.8,
       fontface = "bold",
       family = "Arial",
       show.legend = FALSE
@@ -365,25 +354,25 @@ effect_plot <- function(data, threshold, x_limits, breaks, label_x, best_label_x
 
 p_binary <- effect_plot(
   binary_long,
-  threshold = 0.60,
-  x_limits = c(0.55, 1.44),
-  breaks = seq(0.60, 1.00, 0.10),
-  label_x = 1.02,
-  best_label_x = 1.28,
+  threshold = NA_real_,
+  x_limits = c(0.45, 1.28),
+  breaks = seq(0.50, 1.00, 0.10),
+  label_x = NA_real_,
+  best_label_x = 1.06,
   title = "B  Genomic and genomic-context examples",
-  subtitle = "Values: TITAN / Giga-SSL / Prov-GigaPath.",
+  subtitle = "Held-out AUROC; right-hand label identifies the leading representation.",
   x_title = "Patient-level out-of-fold AUROC"
 )
 
 p_continuous <- effect_plot(
   continuous_long,
   threshold = 0.20,
-  x_limits = c(0.15, 1.16),
-  breaks = seq(0.20, 0.70, 0.10),
-  label_x = 0.70,
-  best_label_x = 1.00,
+  x_limits = c(0.15, 1.27),
+  breaks = seq(0.20, 1.00, 0.20),
+  label_x = NA_real_,
+  best_label_x = 1.06,
   title = "C  Pathway, immune and tissue-context examples",
-  subtitle = "RNA-derived or inferred reference phenotypes; values: TITAN / Giga-SSL / Prov-GigaPath.",
+  subtitle = "Held-out Q-squared; dashed line marks the 0.20 effect threshold.",
   x_title = "Patient-level out-of-fold Q-squared"
 )
 
@@ -401,7 +390,7 @@ for (path in c(
   "results/figures/Figure2_biological_predictability_map.png",
   "figures/Figure2_biological_predictability_map.png"
 )) {
-  ggsave(path, figure, width = 10.4, height = 10.4, dpi = 360, bg = "white")
+  ggsave(path, figure, width = 8.5, height = 10.8, dpi = 360, bg = "white")
 }
 
 for (path in c(

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import re
+import csv
+from zipfile import ZipFile
 from pathlib import Path
 from docx import Document
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "manuscript"
+TABLES = ROOT / "results" / "tables"
 CURRENT = {
     "manuscript_JTM_multifoundation_atlas.docx",
     "supplementary_material_JTM.docx",
@@ -29,6 +32,11 @@ def text(document: Document) -> str:
     return "\n".join(chunks)
 
 
+def csv_rows(name: str) -> list[dict[str, str]]:
+    with (TABLES / name).open(newline="", encoding="utf-8") as source:
+        return list(csv.DictReader(source))
+
+
 for name in CURRENT:
     require((OUT / name).exists(), f"Missing current document: {name}")
 
@@ -41,6 +49,23 @@ supp_text = text(supp)
 response_text = text(response)
 cover_text = text(cover)
 combined = "\n".join((main_text, supp_text, response_text, cover_text))
+
+abstract_start = next(i for i, p in enumerate(main.paragraphs)
+                      if p.text.strip() == "Abstract")
+abstract_end = next(i for i, p in enumerate(main.paragraphs)
+                    if p.text.startswith("Keywords:"))
+abstract_text = " ".join(p.text for p in main.paragraphs[
+    abstract_start + 1:abstract_end
+])
+abstract_words = re.findall(r"\b[\w²-]+\b", abstract_text)
+require(len(abstract_words) <= 350,
+        f"The structured abstract exceeds the journal's 350-word limit: {len(abstract_words)}")
+for heading in ("Background.", "Methods.", "Results.", "Conclusions."):
+    require(heading in abstract_text, f"Abstract section is missing: {heading}")
+with ZipFile(OUT / "manuscript_JTM_multifoundation_atlas.docx") as archive:
+    manuscript_xml = archive.read("word/document.xml")
+require(b'w:type="page"' not in manuscript_xml and b"w:pageBreakBefore" not in manuscript_xml,
+        "The main manuscript contains a manual page break")
 
 require("Patient-level comparison of three released pathology representation pipelines" in main_text,
         "Current title is missing")
@@ -68,18 +93,55 @@ require("1,933" not in response_text and "2,073" not in response_text,
         "Stale task-universe counts remain in the response")
 require("1-10-component" not in combined and "1–10-component" not in combined,
         "Stale 1 to 10 primary component wording remains")
-require("163/243" not in main_text and "68/243" not in main_text,
-        "Stale biological breadth counts remain in the manuscript")
-require("160/243" in main_text and "65/243" in main_text,
-        "Current direct-genomic breadth counts are missing")
-require("Figure 3. Foundation-model leadership" in main_text and "960 cross-modal" in main_text,
+comparison = csv_rows("foundation_model_target_comparison.csv")
+dictionary = csv_rows("endpoint_dictionary.csv")
+provenance = {
+    (row["outcome_type"], row["family"], row["tumor_type"],
+     row["endpoint"], row["source"]): row
+    for row in dictionary
+}
+direct = [
+    row for row in comparison
+    if row["outcome_type"] == "binary" and provenance[
+        (row["outcome_type"], row["family"], row["tumor_type"],
+         row["endpoint"], row["source"])
+    ]["measurement_class"] == "directly observed genomic alteration"
+]
+direct_union = sum(int(row["supported_by_n"]) >= 1 for row in direct)
+direct_all = sum(int(row["supported_by_n"]) == 3 for row in direct)
+require(f"{direct_union}/{len(direct)}" in main_text and
+        f"{direct_all}/{len(direct)}" in main_text,
+        "Direct-genomic breadth counts do not match the refreshed atlas")
+crossmodal_union = sum(
+    int(row["supported_by_n"]) >= 1 and provenance[
+        (row["outcome_type"], row["family"], row["tumor_type"],
+         row["endpoint"], row["source"])
+    ]["same_histology_modality"] == "FALSE"
+    for row in comparison
+)
+require("Figure 3. Foundation-model leadership" in main_text and
+        f"{crossmodal_union:,} cross-modal" in main_text,
         "Foundation-model leadership scope is not synchronized")
-require("TITAN, Giga-SSL and Prov-GigaPath crossed the Q² threshold in 633, 351 and 430" in main_text,
+same_histology = {row["foundation_model"]: row for row in
+                  csv_rows("foundation_model_same_histology_sensitivity.csv")}
+expected_continuous = (
+    same_histology["TITAN"]["cross_modal_continuous_crossings"] + ", " +
+    same_histology["GigaSSL"]["cross_modal_continuous_crossings"] + " and " +
+    same_histology["ProvGigaPath"]["cross_modal_continuous_crossings"]
+)
+require(expected_continuous in main_text,
         "Abstract representation order or continuous counts are inconsistent")
-require("TITAN returned eight endpoints" in main_text and "seven each" in main_text,
-        "COAD binary model counts are not synchronized")
-require("PI3K pathway" not in main_text and "nine endpoints" not in main_text,
-        "Obsolete COAD binary output remains in the manuscript")
+coad_binary = csv_rows("coad_pathofmpred_multifoundation_binary_predictions.csv")
+coad_counts = {
+    model: len({(row["family"], row["endpoint"]) for row in coad_binary
+                if row["patient_id"] == "TCGA-AA-A01F" and
+                row["foundation_model"] == model})
+    for model in ("TITAN", "GigaSSL", "ProvGigaPath")
+}
+for model, count in coad_counts.items():
+    display = {"GigaSSL": "Giga-SSL", "ProvGigaPath": "Prov-GigaPath"}.get(model, model)
+    require(f"{display} returned {count}" in main_text,
+            f"COAD binary model count is not synchronized for {model}")
 require("GPL-3.0-or-later companion analysis repository" in supp_text,
         "Analysis-repository license statement is missing")
 require("PathoFMPred contributor-authored source code and documentation are released under the MIT License" in supp_text,
@@ -104,7 +166,7 @@ def section_paragraphs(document: Document, start: str, end: str) -> list[str]:
 
 
 main_methods = "\n".join(section_paragraphs(main, "Methods", "Results"))
-supp_methods = "\n".join(section_paragraphs(supp, "Supplementary Methods", "Table S1. Analysis coverage and evidence layers"))
+supp_methods = "\n".join(section_paragraphs(supp, "Supplementary Methods", "Table S1. Analysis coverage"))
 require(not re.search(r"\b(?:We|we|Our|our)\b", main_methods),
         "Active first-person wording remains in the main Methods")
 require(not re.search(r"\b(?:We|we|Our|our)\b", supp_methods),

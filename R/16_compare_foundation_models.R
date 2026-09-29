@@ -84,7 +84,7 @@ fingerprint <- digest::digest(list(
   analysis = cfg$analysis,
   estimand = cohort_mode,
   fastPLS_version = as.character(packageVersion("fastPLS")),
-  fastPLS_remote_sha = as.character(fastpls_description$RemoteSha)
+  fastPLS_remote_sha = if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
 ), algo = "sha256")
 
 average_precision <- function(truth, score) {
@@ -194,7 +194,7 @@ run_job <- function(i) {
     negative = if (job$outcome_type == "binary") sum(y == "0") else NA_integer_,
     seed = seed, common_cohort = TRUE,
     fastPLS_version = as.character(packageVersion("fastPLS")),
-    fastPLS_remote_sha = as.character(fastpls_description$RemoteSha)
+    fastPLS_remote_sha = if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
   )]
   saveRDS(list(fingerprint = fingerprint, result = result,
                predictions = rbindlist(predictions)), path, compress = "xz")
@@ -253,4 +253,22 @@ summary <- results[, .(
   median_pr_auc = median(pr_auc, na.rm = TRUE)
 ), by = .(foundation_model, outcome_type)]
 fwrite(summary, paste0("results/tables/foundation_model_matched_summary", output_suffix, ".csv"))
+if (identical(cohort_mode, "common_patient") && !nzchar(job_file) &&
+    nrow(jobs) == nrow(all_jobs)) {
+  promoted <- c(
+    file.copy(
+      paste0("results/tables/foundation_model_matched_screen", output_suffix, ".csv"),
+      "results/tables/foundation_model_matched_screen.csv", overwrite = TRUE
+    ),
+    file.copy(
+      paste0("results/predictions/foundation_model_matched_oof", output_suffix, ".rds"),
+      "results/predictions/foundation_model_matched_oof.rds", overwrite = TRUE
+    ),
+    file.copy(
+      paste0("results/tables/foundation_model_matched_summary", output_suffix, ".csv"),
+      "results/tables/foundation_model_matched_summary.csv", overwrite = TRUE
+    )
+  )
+  if (!all(promoted)) stop("Could not promote the complete matched analysis")
+}
 print(summary)

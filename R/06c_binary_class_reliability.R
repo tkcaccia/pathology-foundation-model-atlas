@@ -108,7 +108,7 @@ component_fingerprint <- digest::digest(list(
   ),
   analysis = cfg$analysis,
   fastPLS = as.character(packageVersion("fastPLS")),
-  remote_sha = as.character(packageDescription("fastPLS")$RemoteSha)
+  remote_sha = if (is.null(packageDescription("fastPLS")$RemoteSha)) NA_character_ else as.character(packageDescription("fastPLS")$RemoteSha)
 ), algo = "sha256")
 
 component_job <- function(i) {

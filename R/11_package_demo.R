@@ -8,6 +8,31 @@ suppressPackageStartupMessages({
 source("R/utils.R")
 cfg <- load_project_config()
 
+# Do not generate manuscript examples from an earlier fitted-object release.
+# The package source and the three consolidated collections must be rebuilt
+# from the current CRAN fastPLS registry before this script is run.
+private_collection <- system.file(
+  "models", "pathofmpred_titan.rds", package = "PathoFMPred"
+)
+if (!nzchar(private_collection) || !file.exists(private_collection)) {
+  stop("Install the refreshed private PathoFMPred collections before generating COAD examples")
+}
+collection <- readRDS(private_collection)
+registered <- data.table::fread("models/model_registry.csv")
+registered <- registered[foundation_model == "TITAN"]
+if (!setequal(collection$registry$model_id, registered$model_id) ||
+    !identical(
+      unname(collection$registry$sha256[match(registered$model_id,
+                                               collection$registry$model_id)]),
+      unname(registered$sha256)
+    ) ||
+    any(vapply(collection$models, function(artifact) {
+      !identical(as.character(artifact$fastPLS_version), "0.3") ||
+        !identical(as.character(artifact$fastPLS_repository), "CRAN")
+    }, logical(1)))) {
+  stop("Installed PathoFMPred TITAN collection is not synchronized with the CRAN 0.3 atlas")
+}
+
 dir.create("results/reports", recursive = TRUE, showWarnings = FALSE)
 dir.create("results/predictions", recursive = TRUE, showWarnings = FALSE)
 dir.create("results/tables", recursive = TRUE, showWarnings = FALSE)

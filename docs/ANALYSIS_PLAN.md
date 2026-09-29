@@ -17,11 +17,11 @@ registry was committed in `ac30ccb` before the 9,999-permutation results were
 generated. The future external-validation protocol was locked before any
 external evaluation, but no external result currently exists.
 
-The revision-added fold-assignment audit of the three-representation atlas was
-fixed before its alternative-partition results were inspected. It includes
+The retrospective fold-assignment audit of the three-representation atlas used
+documented settings. It includes
 every primary-partition union-positive cancer–endpoint pair and every pair for
 which at least one representation lay within ±0.05 of Q²=0.20 (continuous) or
-balanced accuracy=0.60 (binary). Five new nested 5×5 partitions are generated
+AUROC=0.60 (binary). Five new nested 5×5 partitions are generated
 per selected task. Each partition, outcome-labelled patient set, seed and
 tuning rule is identical across TITAN, Giga-SSL and Prov-GigaPath. These are
 alternative partitions, not repeats of the primary partition and not an
@@ -29,8 +29,8 @@ independent cohort.
 
 ## Catalogue-normalized breadth
 
-The matched benchmark contains 1,933 cancer–endpoint tasks but 187 exact
-endpoint definitions (56 continuous and 131 binary). Because endpoints are
+The matched benchmark contains 3,389 cancer-endpoint tasks but 239 exact
+endpoint definitions (108 continuous and 131 binary). Because endpoints are
 correlated and repeatedly evaluated across cancers, a crossing count is a
 catalogue-level breadth measure rather than a count of independent biological
 signals. For each representation and outcome type we therefore report: (1) the
@@ -46,34 +46,38 @@ permutation or multiplicity qualification to the three-representation atlas.
 
 The participant is the independent unit. Eligible slides are FFPE primary
 tumour diagnostic slides identified by TCGA sample type `01` and `-DX` in
-the filename. For each participant and each of the 768 TITAN dimensions, the
-arithmetic mean across all eligible slides is calculated before any outcome
-is joined. The number and identifiers of contributing slides are retained.
+the filename. For each participant, the arithmetic mean of every released
+embedding dimension is calculated separately for TITAN (768), Giga-SSL (512)
+and Prov-GigaPath (768) before any outcome is joined. The number and
+identifiers of contributing slides are retained.
 Molecular outcomes are likewise restricted to TCGA primary-tumour sample type
 `01` before participant-level aggregation; metastatic, recurrent and normal
 sample barcodes are excluded.
 
-## Primary models
+## Primary matched probe and supporting TITAN screen
 
-- Continuous target: one-target PLS1 regression within each cancer type.
-- Binary target: one-target PLS followed by LDA within each cancer type. The
-  documented atlas rule uses observed outer-training-fold class priors. A
-  revision-added complete sensitivity compares that rule on identical outer
-  partitions with equal LDA priors and a threshold selected from pooled inner
-  held-out scores to maximise balanced accuracy; component count is reselected
-  inside each outer training set under each alternative rule.
-- Immune multivariate sensitivity: PLS2, evaluated only on complete matched
-  samples and identical folds; comparison is secondary.
+- Continuous matched targets use single-outcome PLS regression within each
+  cancer. Q-squared from pooled outer out-of-fold patient predictions is the
+  primary effect.
+- Binary matched targets use single-outcome PLS followed by LDA. Component
+  count is selected by pooled inner out-of-fold AUROC, and outer out-of-fold
+  AUROC is the primary effect and crossing statistic. Balanced accuracy,
+  sensitivity, specificity, PPV and NPV use an operating threshold selected
+  solely from the outer training set. PR-AUC uses held-out continuous scores.
+- The larger supporting TITAN-only permutation/FDR screen retains its
+  historically documented empirical-training-prior LDA rule and balanced
+  accuracy crossing statistic. Its crossing counts must never be presented as
+  three-representation AUROC crossings. Equal-prior and inner-optimized
+  operating rules are recorded as sensitivities.
+- Joint multi-outcome PLS for correlated inflammatory blocks is secondary
+  and uses complete matched outcome rows and identical folds.
 
-Component number (1-20) is selected inside the training portion of every
+Component number (1 to 20) is selected inside the training portion of every
 outer fold. Performance is calculated exclusively from out-of-fold patient
-predictions. Balanced accuracy is primary for binary outcomes; AUROC from
-continuous LDA scores is secondary. Q-squared is primary for continuous
-outcomes. Every primary, permutation, repeated, sensitivity and final-model PLS
-fit uses CPU rSVD exclusively, with the fastPLS 0.3 defaults of 32
-oversampling vectors and five power iterations plus an explicit fit seed.
-Repeated nested
-validation therefore reflects both partition and rSVD-seed variation.
+predictions. Every PLS fit uses CPU rSVD, the fastPLS 0.3 defaults of 32
+oversampling vectors and five power iterations, and an explicit fit seed.
+Repeated nested validation therefore reflects both partition and rSVD-seed
+variation.
 
 The five inner-fold held-out predictions are pooled before calculating the
 tuning objective. Exact component-count ties choose the smallest count. For
@@ -168,34 +172,35 @@ aliquot, block, tumour region or subclone.
 
 For the central matched representation benchmark, fold-assignment stability is
 reported for all union-positive and near-threshold tasks. Outputs retain the
-continuous Q²/AUROC effect estimates, empirical-prior balanced-accuracy
+continuous Q² or binary AUROC effects, corresponding effect-threshold
 crossing status, selected components and fold hashes for every representation
 and repeat. Per-task crossing proportions and the stability of the descriptive
 classes “all three”, “exactly two”, “representation specific” and “none” are
 reported alongside continuous paired effects and ranks. Threshold-sensitivity
-curves cover Q² from 0.10 to 0.30 and balanced accuracy from 0.55 to 0.65.
+curves cover Q² from 0.10 to 0.30 and AUROC from 0.55 to 0.65.
 Categorical crossing labels are therefore not treated as invariant biological
 properties.
 
-For every one of the 340 primary union-positive matched tasks, a revision-added
+For every primary union-crossing matched task, a retrospective
 cohort-structure sensitivity keeps complete two-character TCGA tissue-source-site
 codes together in both outer and inner validation. TITAN, Giga-SSL and
 Prov-GigaPath use identical task-specific patients, grouped folds, seeds and tuning
 rules. A matched-random control has identical outer-fold sizes and, for binary
 outcomes, identical positive/negative counts. The primary comparison is retention
-of each representation's original Q²≥0.20 or balanced-accuracy≥0.60 crossing;
+of each representation's original Q²≥0.20 or AUROC≥0.60 crossing;
 grouped-minus-matched-random Q² (continuous) or AUROC (binary) is also reported.
 
-An internal prioritisation class combines three dimensions: representation
+An optional registry navigation tag combines three dimensions: representation
 consensus, sample-size maturity (continuous n≥100; binary both classes≥50), and
 retention of the originally crossing representations after grouping. R1 denotes
 all-three/mature/complete retention; R2 at least two/mature/complete retention; R3
 mature with at least one retained crossing but not R1/R2; R4 limited sample-size
-maturity or no retained crossing. These revision-added labels are not clinical
-grades, inferential discoveries, proof of confounding, or external validation.
+maturity or no retained crossing. These historical tags are deprecated for
+biological prioritisation and are not clinical grades, inferential discoveries,
+proof of confounding, or external validation.
 
-The maturity cut-offs are revision-added evidence descriptors rather than
-retrospective significance filters. Inclusive and standard-evidence counts are
+The maturity cut-offs are retrospective sample-size descriptors rather than
+significance filters. Inclusive and larger-sample-stratum counts are
 reported in parallel; the descriptor does not alter task eligibility, effect
 thresholds, raw p-values, BH denominators, q-values or the complete atlas.
 

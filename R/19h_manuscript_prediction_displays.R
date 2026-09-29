@@ -148,27 +148,29 @@ binary <- subset(
 patients <- c("TCGA-AA-A01F", "TCGA-A6-A56B")
 stopifnot(all(patients %in% binary$patient_id))
 
-feature_order <- data.frame(
-  family = c(
-    "aneuploidy",
-    rep("driver_mutation", 3),
-    "microsatellite_instability",
-    "microsatellite_instability_sensitivity",
-    rep("oncogenic_pathway", 2)
-  ),
-  endpoint = c(
-    "Genome doubling", "APC", "KRAS", "TP53",
-    "MSI-H (MANTIS >0.4)", "MSI-H strict (MANTIS >0.6)",
-    "MYC", "TP53"
-  ),
-  feature_label = c(
-    "Genome doubling",
-    "Mutation | APC", "Mutation | KRAS", "Mutation | TP53",
-    "MSI-H | MANTIS >0.4", "MSI-H strict | MANTIS >0.6",
-    "Pathway | MYC", "Pathway | TP53"
-  ),
-  stringsAsFactors = FALSE
+feature_order <- unique(binary[, c("family", "endpoint")])
+family_order <- c(
+  "aneuploidy", "driver_mutation", "fusion",
+  "microsatellite_instability", "microsatellite_instability_sensitivity",
+  "oncogenic_pathway"
 )
+feature_order$family_rank <- match(feature_order$family, family_order)
+feature_order$family_rank[is.na(feature_order$family_rank)] <- length(family_order) + 1L
+feature_order <- feature_order[
+  order(feature_order$family_rank, feature_order$endpoint), , drop = FALSE
+]
+feature_order$feature_label <- mapply(function(family, endpoint) {
+  if (family == "driver_mutation") return(paste("Mutation |", endpoint))
+  if (family == "oncogenic_pathway") return(paste("Pathway |", endpoint))
+  if (family == "fusion") return(paste("Fusion |", endpoint))
+  if (family == "microsatellite_instability") return(paste("MSI-H |", endpoint))
+  if (family == "microsatellite_instability_sensitivity") {
+    return(paste("MSI-H strict |", endpoint))
+  }
+  if (family == "aneuploidy") return(endpoint)
+  paste(gsub("_", " ", family), "|", endpoint)
+}, feature_order$family, feature_order$endpoint, USE.NAMES = FALSE)
+feature_order$family_rank <- NULL
 feature_order$feature_key <- paste(feature_order$family, feature_order$endpoint, sep = "||")
 binary$feature_key <- paste(binary$family, binary$endpoint, sep = "||")
 binary <- merge(binary, feature_order, by = c("family", "endpoint", "feature_key"), all.x = TRUE)
@@ -288,9 +290,9 @@ p_binary <- ggplot(
     y = NULL,
     fill = NULL,
     caption = paste0(
-      "Reference rank is not probability. LDA scores are uncalibrated and model-specific.\n",
-      "NOT RETURNED means that the representation had no eligible threshold-crossing fitted object for the feature.\n",
-      "Reference labels are unavailable for these two illustrative patients."
+      "Reference rank, not probability. LDA scores are uncalibrated.\n",
+      "NOT RETURNED: no eligible fitted model for this pipeline and feature.\n",
+      "Full-data TCGA examples; not held-out validation."
     )
   ) +
   theme_minimal(base_size = 8.4, base_family = "Arial") +
@@ -313,7 +315,7 @@ ggsave(
   binary_path,
   p_binary,
   width = 6.35,
-  height = 8.15,
+  height = max(8.15, 2.0 + 0.76 * nrow(feature_order)),
   dpi = 400,
   bg = "white"
 )
@@ -326,7 +328,7 @@ ggsave(
   file.path(figure_dir, "Figure6_COAD_PathoFMPred_full_binary_output.pdf"),
   p_binary,
   width = 6.35,
-  height = 8.15,
+  height = max(8.15, 2.0 + 0.76 * nrow(feature_order)),
   device = cairo_pdf,
   bg = "white"
 )

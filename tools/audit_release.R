@@ -21,10 +21,10 @@ assert(!any(vapply(r_sources, function(path) {
 key <- c("family", "tumor_type", "endpoint")
 assert(as.character(packageVersion("fastPLS")) == "0.3",
        "Project-local fastPLS is not version 0.3")
-fastpls_sha <- if (is.null(fastpls_description$RemoteSha)) "" else
+fastpls_sha <- if (is.null(fastpls_description$RemoteSha)) NA_character_ else
   as.character(fastpls_description$RemoteSha)
-assert(startsWith(fastpls_sha, "b518f75"),
-       "Project-local fastPLS is not built from commit b518f75")
+assert(identical(fastpls_description$Repository, "CRAN") && is.na(fastpls_sha),
+       "Project-local fastPLS is not the CRAN 0.3 release")
 
 continuous <- fread("results/tables/continuous_screen.csv")
 binary <- fread("results/tables/binary_screen.csv")
@@ -177,6 +177,7 @@ expected_analysis_fingerprint <- digest(list(
   patient_ids = rownames(cohort_object$X),
   fastPLS_version = as.character(packageVersion("fastPLS")),
   fastPLS_remote_sha = fastpls_sha,
+  fastPLS_repository = as.character(fastpls_description$Repository),
   backend = screen_backends
 ), algo = "sha256")
 assert(uniqueN(continuous, by = key) == nrow(continuous),
@@ -450,9 +451,10 @@ assert(all(!is.na(registry$endpoint_transform) & nzchar(registry$endpoint_transf
              !is.na(registry$output_units) & nzchar(registry$output_units)),
        "Registry endpoint transformation/output units are incomplete")
 assert(all(registry$fastPLS_version == "0.3" &
-             startsWith(registry$fastPLS_remote_sha, "b518f75") &
+             is.na(registry$fastPLS_remote_sha) &
+             registry$fastPLS_repository == "CRAN" &
              !is.na(registry$backend) & nzchar(registry$backend)),
-       "Registry software-version, commit or backend metadata are incomplete")
+       "Registry CRAN software provenance or backend metadata are incomplete")
 assert("svd_method" %in% names(registry) &&
          all(registry$svd_method == cfg$analysis$svd_method) &&
          all(registry$rsvd_oversample == cfg$analysis$rsvd_oversample) &&
@@ -569,8 +571,10 @@ for (i in seq_len(nrow(registry))) {
          paste("Artifact transformation/output metadata mismatch:", path))
   assert(identical(as.character(artifact$fastPLS_version),
                    as.character(registry$fastPLS_version[i])) &&
-           identical(artifact$fastPLS_remote_sha,
-                     registry$fastPLS_remote_sha[i]) &&
+           is.na(artifact$fastPLS_remote_sha) &&
+           is.na(registry$fastPLS_remote_sha[i]) &&
+           identical(artifact$fastPLS_repository,
+                     registry$fastPLS_repository[i]) &&
            identical(artifact$backend, registry$backend[i]) &&
            identical(artifact$svd_method, registry$svd_method[i]) &&
            identical(artifact$rsvd_oversample,
@@ -880,7 +884,8 @@ assert(all(highlighted_repeat_fields %in% names(highlighted)) &&
                        highlighted$repeat_crossing_proportion)),
        "Highlighted repeat distributions or crossing proportions are incomplete")
 assert(all(highlighted$model_fastPLS_version == "0.3" &
-             startsWith(highlighted$model_fastPLS_remote_sha, "b518f75") &
+             is.na(highlighted$model_fastPLS_remote_sha) &
+             highlighted$model_fastPLS_repository == "CRAN" &
              !is.na(highlighted$model_backend) &
              nzchar(highlighted$model_backend) &
              highlighted$model_svd_method == cfg$analysis$svd_method &
@@ -1425,10 +1430,12 @@ fastpls_software <- software[package == "fastPLS"]
 tcga_software <- software[package == "TCGAmutations"]
 assert(nrow(fastpls_software) == 1L && fastpls_software$installed &&
          fastpls_software$version == "0.3" &&
-         startsWith(fastpls_software$installed_remote_sha, "b518f75") &&
-         grepl("b518f75285c387632c2443a0c0989d75c9dcda48$",
-               fastpls_software$configured_source),
-       "Software manifest does not identify the pinned fastPLS build")
+         (is.na(fastpls_software$installed_remote_sha) ||
+            !nzchar(fastpls_software$installed_remote_sha)) &&
+         fastpls_software$configured_source == "CRAN fastPLS 0.3" &&
+         fastpls_software$configured_source_sha256 ==
+           "e752ed28dcbaf162d8e622d3c7dc436b315ef4b767c06db2ae8b29cbbfa7b51f",
+       "Software manifest does not identify CRAN fastPLS 0.3")
 assert(nrow(tcga_software) == 1L && tcga_software$installed &&
          tcga_software$version == "0.4.0" &&
          grepl("3474e3412cfa1490db4a84db57e4a732480990a9$",

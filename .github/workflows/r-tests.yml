@@ -19,17 +19,29 @@ jobs:
       # package. Install only the dependencies exercised by the source-level
       # unit tests so the runner does not try to resolve the full data-ingest
       # stack declared in DESCRIPTION (including non-CRAN data packages).
-      - name: Install source-test dependencies and pinned fastPLS
+      - name: Install source-test dependencies and CRAN fastPLS
         run: |
-          install.packages(c("testthat", "data.table", "float"))
+          install.packages(c("testthat", "data.table", "digest", "float"),
+                           repos = "https://cloud.r-project.org")
           archive <- tempfile(fileext = ".tar.gz")
-          download.file(
-            "https://codeload.github.com/tkcaccia/fastPLS/tar.gz/b518f75285c387632c2443a0c0989d75c9dcda48",
-            archive,
-            mode = "wb"
-          )
+          urls <- c("https://cloud.r-project.org/src/contrib/fastPLS_0.3.tar.gz",
+                    "https://cloud.r-project.org/src/contrib/Archive/fastPLS/fastPLS_0.3.tar.gz")
+          downloaded <- FALSE
+          for (url in urls) {
+            downloaded <- tryCatch({
+              status <- suppressWarnings(download.file(url, archive, mode = "wb", quiet = TRUE))
+              identical(status, 0L) && file.exists(archive) && file.info(archive)$size > 0
+            }, error = function(e) FALSE)
+            if (downloaded) break
+          }
+          stopifnot(downloaded)
+          stopifnot(identical(
+            digest::digest(file = archive, algo = "sha256"),
+            "e752ed28dcbaf162d8e622d3c7dc436b315ef4b767c06db2ae8b29cbbfa7b51f"
+          ))
           install.packages(archive, repos = NULL, type = "source")
           stopifnot(as.character(packageVersion("fastPLS")) == "0.3")
+          stopifnot(identical(packageDescription("fastPLS")$Repository, "CRAN"))
         shell: Rscript {0}
       - name: Run source-only unit tests
         run: Rscript tests/testthat.R

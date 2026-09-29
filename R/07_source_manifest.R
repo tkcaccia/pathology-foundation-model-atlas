@@ -55,11 +55,11 @@ manifest <- rbindlist(lapply(names(cfg$paths), function(key) {
 fwrite(manifest, "results/tables/source_manifest.csv")
 
 software_packages <- c(
-  "data.table", "digest", "fastPLS", "future.apply", "ggplot2", "glmnet",
+  "data.table", "digest", "fastPLS", "float", "future.apply", "ggplot2", "glmnet",
   "jsonlite", "maftools", "pROC", "readxl", "TCGAmutations", "testthat"
 )
 configured_source <- c(
-  fastPLS = "tkcaccia/fastPLS@b518f75285c387632c2443a0c0989d75c9dcda48",
+  fastPLS = "CRAN fastPLS 0.3",
   TCGAmutations = paste0(
     "PoisonAlien/TCGAmutations@",
     "3474e3412cfa1490db4a84db57e4a732480990a9"
@@ -75,14 +75,18 @@ software <- rbindlist(lapply(software_packages, function(package) {
     installed_remote_sha = if (installed && !is.null(description$RemoteSha))
       as.character(description$RemoteSha) else NA_character_,
     configured_source = if (package %chin% names(configured_source))
-      configured_source[[package]] else NA_character_
+      configured_source[[package]] else NA_character_,
+    configured_source_sha256 = if (package == "fastPLS")
+      "e752ed28dcbaf162d8e622d3c7dc436b315ef4b767c06db2ae8b29cbbfa7b51f"
+      else NA_character_
   )
 }))
 software <- rbindlist(list(
   data.table(
     package = "R", installed = TRUE,
     version = paste(R.version$major, R.version$minor, sep = "."),
-    installed_remote_sha = NA_character_, configured_source = R.version$platform
+    installed_remote_sha = NA_character_, configured_source = R.version$platform,
+    configured_source_sha256 = NA_character_
   ),
   software
 ), use.names = TRUE)
@@ -96,7 +100,7 @@ session <- c(
   paste0("rSVD oversampling: ", cfg$analysis$rsvd_oversample),
   paste0("rSVD power iterations: ", cfg$analysis$rsvd_power),
   paste0("fastPLS version: ", as.character(packageVersion("fastPLS"))),
-  paste0("fastPLS remote SHA: ", fastpls_description$RemoteSha),
+  paste0("fastPLS repository: ", fastpls_description$Repository),
   "",
   "Pinned analysis packages:",
   paste0(software$package, " ", software$version,

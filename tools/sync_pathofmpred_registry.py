@@ -83,24 +83,7 @@ for update in updates:
 if len({(r["foundation_model"], r["model_id"]) for r in rows}) != len(rows):
     raise RuntimeError("Duplicate foundation_model/model_id keys in controlled registries")
 
-PACKAGE_REGISTRY.parent.mkdir(parents=True, exist_ok=True)
-with PACKAGE_REGISTRY.open("w", newline="", encoding="utf-8") as handle:
-    writer = csv.DictWriter(
-        handle, fieldnames=fields, extrasaction="ignore", lineterminator="\n"
-    )
-    writer.writeheader()
-    writer.writerows(rows)
-
-# Replace only the generated fitted-object payload. The source package, model
-# registry, schemas and documentation remain untouched. Every copied filename
-# is content-addressed and its digest is verified against the freshly generated
-# analysis registry before it enters the package tree.
-for model_name in ("TITAN", "GigaSSL", "ProvGigaPath"):
-    destination = PACKAGE_MODELS / model_name
-    destination.mkdir(parents=True, exist_ok=True)
-    for old_object in destination.glob("*.rds"):
-        old_object.unlink()
-
+verified_sources: list[tuple[dict[str, str], Path]] = []
 for row in rows:
     key = (row["foundation_model"], row["model_id"])
     source_object = source_objects.get(key)
@@ -109,6 +92,28 @@ for row in rows:
     digest = hashlib.sha256(source_object.read_bytes()).hexdigest()
     if digest != row["sha256"]:
         raise RuntimeError(f"Fitted-object checksum mismatch for {key}")
+    verified_sources.append((row, source_object))
+
+PACKAGE_REGISTRY.parent.mkdir(parents=True, exist_ok=True)
+with PACKAGE_REGISTRY.open("w", newline="", encoding="utf-8") as handle:
+    writer = csv.DictWriter(
+        handle, fieldnames=fields, extrasaction="ignore", lineterminator="\n"
+    )
+    writer.writeheader()
+    writer.writerows(rows)
+
+# Validate every source before replacing any existing generated fitted object.
+# Every copied filename is content-addressed and its digest is verified against
+# the freshly generated analysis registry before it enters the package tree.
+# Replace only the generated fitted-object payload. The source package, model
+# registry, schemas and documentation remain untouched.
+for model_name in ("TITAN", "GigaSSL", "ProvGigaPath"):
+    destination = PACKAGE_MODELS / model_name
+    destination.mkdir(parents=True, exist_ok=True)
+    for old_object in destination.glob("*.rds"):
+        old_object.unlink()
+
+for row, source_object in verified_sources:
     destination = PACKAGE_MODELS / row["foundation_model"] / row["file"]
     shutil.copy2(source_object, destination)
 

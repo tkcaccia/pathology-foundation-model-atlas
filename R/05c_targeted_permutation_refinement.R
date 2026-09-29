@@ -10,10 +10,8 @@ cfg <- load_project_config()
 backend <- tolower(Sys.getenv("TITAN_BACKEND", "cpu"))
 options(backend = backend)
 fastpls_description <- packageDescription("fastPLS")
-fastpls_remote_sha <- as.character(fastpls_description$RemoteSha)
-if (!length(fastpls_remote_sha) || is.na(fastpls_remote_sha)) {
-  fastpls_remote_sha <- "not-recorded"
-}
+fastpls_remote_sha <- if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
+fastpls_repository <- as.character(fastpls_description$Repository)
 workers <- as.integer(Sys.getenv("TITAN_WORKERS", "6"))
 future::plan(future::multicore, workers = workers)
 run_refinement <- !identical(
@@ -159,6 +157,7 @@ refine_one <- function(i) {
     primary_exceedances = as.integer(job$permutation_exceedances),
     fastPLS_version = as.character(packageVersion("fastPLS")),
     fastPLS_remote_sha = fastpls_remote_sha,
+    fastPLS_repository = fastpls_repository,
     analysis = cfg$analysis
   ), algo = "sha256")
   target_checkpoint_dir <- if (target$outcome_type == "binary") {
@@ -251,6 +250,7 @@ refine_one <- function(i) {
     parallel_workers = workers,
     fastPLS_version = as.character(packageVersion("fastPLS")),
     fastPLS_remote_sha = fastpls_remote_sha,
+    fastPLS_repository = fastpls_repository,
     pls_method = "simpls",
     scaling = "centering",
     classifier = if (loss_metric) "not applicable" else "LDA",

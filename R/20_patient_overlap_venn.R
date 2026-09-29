@@ -66,15 +66,15 @@ identical_slide_set_patients <- 8207L
 
 png(
   file.path("results", "figures", "Figure1_patient_overlap_venn.png"),
-  width = 2400, height = 1600, res = 300, bg = "white"
+  width = 2400, height = 1700, res = 300, bg = "white"
 )
 par(mar = c(2.0, 0.7, 1.0, 0.7), family = "sans", xpd = NA)
 plot.new()
-plot.window(xlim = c(0.3, 9.7), ylim = c(-0.70, 8.1), asp = 1)
+plot.window(xlim = c(0.3, 9.7), ylim = c(-0.70, 9.1), asp = 1)
 
-text(5, 7.82, "Patient overlap across released TCGA representation datasets",
-     cex = 1.48, font = 2, col = "#102A43")
-text(5, 7.38,
+text(5, 8.76, "Patient overlap across released TCGA representation datasets",
+     cex = 1.32, font = 2, col = "#102A43")
+text(5, 8.35,
      paste0(fmt(length(all_patients)), " patients in the union; ",
             fmt(value[["111"]]), " (",
             sprintf("%.1f", 100 * value[["111"]] / length(all_patients)),
@@ -83,20 +83,20 @@ text(5, 7.38,
 
 centres_x <- c(4.05, 5.95, 5.00)
 centres_y <- c(4.78, 4.78, 3.25)
-radius <- 2.25
+radius <- 2.20
 for (i in seq_along(centres_x)) {
   symbols(centres_x[i], centres_y[i], circles = radius, inches = FALSE,
           add = TRUE, fg = unname(cols[i]),
           bg = adjustcolor(unname(cols[i]), alpha.f = 0.17), lwd = 3)
 }
 
-text(1.25, 5.98, paste0("TITAN\n", fmt(length(patient_sets[[1]])),
+text(2.55, 7.53, paste0("TITAN: ", fmt(length(patient_sets[[1]])),
                         " patients\n", fmt(released_slides[["TITAN"]]), " slides"),
-     cex = 1.03, font = 2, col = cols[[1]], adj = c(0.5, 0.5))
-text(8.75, 5.98,
-     paste0("Giga-SSL\n", fmt(length(patient_sets[[2]])),
+     cex = 0.91, font = 2, col = cols[[1]], adj = c(0.5, 0.5))
+text(7.45, 7.53,
+     paste0("Giga-SSL: ", fmt(length(patient_sets[[2]])),
             " patients\n", fmt(released_slides[["Giga-SSL"]]), " slides"),
-     cex = 1.03, font = 2, col = cols[[2]], adj = c(0.5, 0.5))
+     cex = 0.91, font = 2, col = cols[[2]], adj = c(0.5, 0.5))
 text(5.00, 0.40,
      paste0("Prov-GigaPath\n", fmt(length(patient_sets[[3]])),
             " patients\n", fmt(released_slides[["Prov-GigaPath"]]), " slides"),
@@ -111,8 +111,8 @@ region_label(2.62, 5.02, value[["100"]])
 region_label(7.38, 5.02, value[["010"]])
 region_label(5.00, 1.55, value[["001"]])
 region_label(5.00, 5.90, value[["110"]], "TITAN + Giga-SSL", 1.00)
-region_label(3.72, 3.08, value[["101"]], "TITAN +\nProv-GigaPath", 0.98)
-region_label(6.28, 3.08, value[["011"]], "Giga-SSL +\nProv-GigaPath", 0.98)
+region_label(3.72, 3.08, value[["101"]], cex = 0.98)
+region_label(6.28, 3.08, value[["011"]], cex = 0.98)
 region_label(5.00, 4.18, value[["111"]], "all three", 1.35, "#102A43")
 
 text(9.55, -0.55,

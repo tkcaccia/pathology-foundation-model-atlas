@@ -2,7 +2,7 @@
 
 Raw files are not committed. The pipeline records SHA-256 checksums locally
 in `results/tables/source_manifest.csv`. Installed package versions, available
-remote commit metadata and the explicitly pinned fastPLS/TCGAmutations source
+remote commit metadata, the CRAN fastPLS version, and the pinned TCGAmutations source
 references are written to `results/tables/software_manifest.csv`.
 
 | Family | Source | Role |
@@ -18,7 +18,10 @@ references are written to `results/tables/software_manifest.csv`.
 | Gene fusions | Gao et al., *Cell Reports* (2018), Table S1 | Fusion burden and recurrent fusion targets |
 | MSI | Bonneville et al., *JCO Precision Oncology* (2017); cBioPortal Datahub | MANTIS and MSIsensor scores/status |
 | Participant characteristics | Liu et al., *Cell* (2018), TCGA Clinical Data Resource | Descriptive age, recorded gender, race and broad stage summaries |
-| PLS software | fastPLS 0.3, Git commit `b518f75` | Nested PLS/PLS-LDA modelling |
+| PLS software | fastPLS 0.3 from CRAN | Nested PLS/PLS-LDA modelling |
+
+The CRAN `fastPLS_0.3.tar.gz` source archive used for this rerun has SHA-256
+`e752ed28dcbaf162d8e622d3c7dc436b315ef4b767c06db2ae8b29cbbfa7b51f`.
 
 The curated prior-histology mutation claims used for the discussion crosswalk
 are stored in `data/reference/prior_mutation_claims.csv`. Each row records the

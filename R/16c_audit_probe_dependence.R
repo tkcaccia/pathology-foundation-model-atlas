@@ -57,7 +57,10 @@ ridge_nested <- function(X, y, binary_outcome, seed) {
     family <- if (binary_outcome) "binomial" else "gaussian"
     fit <- tryCatch(cv.glmnet(X[train,,drop=FALSE], if (binary_outcome) as.integer(as.character(y[train])) else y[train],
       family = family, alpha = 0, foldid = inner, keep = TRUE, standardize = TRUE,
-      type.measure = if (binary_outcome) "auc" else "mse"), error = identity)
+      # Lambda selection below uses pooled inner OOF AUROC or Q2 directly;
+      # the internal cv.glmnet summary is not the selection objective.
+      # Deviance prevents an automatic AUC fallback in sparse binary folds.
+      type.measure = if (binary_outcome) "deviance" else "mse"), error = identity)
     if (inherits(fit, "error")) { failures <- failures + 1L; next }
     if (binary_outcome) {
       inner_score <- plogis(fit$fit.preval)

@@ -317,7 +317,10 @@ inner_pls_selection <- function(X, y, inner, seed) {
 inner_ridge_selection <- function(X, y_numeric, y_factor, inner) {
   tune <- cv.glmnet(
     X, y_numeric, family = "binomial", alpha = 0,
-    foldid = inner, type.measure = "auc", keep = TRUE,
+    # The selected lambda is chosen below from pooled inner OOF balanced
+    # accuracy, not from cv.glmnet's internal summary. Its deviance summary
+    # avoids glmnet's automatic AUC-to-deviance fallback in sparse folds.
+    foldid = inner, type.measure = "deviance", keep = TRUE,
     standardize = TRUE, intercept = TRUE, parallel = FALSE
   )
   inner_probability <- stats::plogis(tune$fit.preval)

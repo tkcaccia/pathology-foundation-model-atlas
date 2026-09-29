@@ -10,7 +10,7 @@ backend <- tolower(Sys.getenv("TITAN_BACKEND", "cpu"))
 options(backend = backend)
 fastpls_description <- packageDescription("fastPLS")
 fastpls_version <- as.character(packageVersion("fastPLS"))
-fastpls_remote_sha <- as.character(fastpls_description$RemoteSha)
+fastpls_remote_sha <- if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
 cohort <- readRDS("data/processed/patient_cohort.rds")
 continuous_targets <- readRDS("data/processed/continuous_targets.rds")
 binary_targets <- rbindlist(list(
@@ -56,19 +56,12 @@ analysis_fingerprint <- digest::digest(list(
   patient_ids = rownames(cohort$X),
   fastPLS_version = fastpls_version,
   fastPLS_remote_sha = fastpls_remote_sha,
+  fastPLS_repository = as.character(fastpls_description$Repository),
   backend = backend
 ), algo = "sha256")
 
-# The preceding access-controlled release used this exact fingerprint. Its
-# repeated and final fits already record the current fastPLS Git SHA and the
-# same cohort/target/configuration inputs. The present source change adds binary
-# decision-rule metadata plus removal of unregistered artifacts; it does not
-# alter numerical fitting. Candidate membership, sample/class counts and tiers
-# are checked before any legacy checkpoint can be re-indexed.
-compatible_legacy_fingerprints <- c(
-  "65f5c4e5df41fb32a17d8fd99cd10e48813ea1d132a91804326a8872230e35bd",
-  "33c1993fe49fc8c0b271de0df1ca433354c34662a3c9b8e416bfcc0b4e99e369"
-)
+# No checkpoint from the former Git build may be migrated into the CRAN run.
+compatible_legacy_fingerprints <- character()
 
 atomic_save_rds <- function(object, path) {
   temporary <- paste0(path, ".tmp-", Sys.getpid())
@@ -152,7 +145,7 @@ migrate_compatible_checkpoint <- function(object, path, model_id, outcome_type) 
     numerical_refit_performed = FALSE,
     reuse_basis = paste(
       "candidate membership, sample/class counts, tier, artifact hash,",
-      "cohort/schema hashes, exact fastPLS Git SHA, backend and rSVD settings matched;",
+      "cohort/schema hashes, fastPLS provenance, backend and rSVD settings matched;",
       "source change was metadata/cleanup only"
     )
   )
@@ -275,6 +268,7 @@ run_continuous <- function(i) {
       output_units = output_units,
       fastPLS_version = fastpls_version,
       fastPLS_remote_sha = fastpls_remote_sha,
+      fastPLS_repository = as.character(fastpls_description$Repository),
       backend = backend,
       svd_method = cfg$analysis$svd_method,
       rsvd_oversample = cfg$analysis$rsvd_oversample,
@@ -283,6 +277,7 @@ run_continuous <- function(i) {
     ),
     fastPLS_version = fastpls_version,
     fastPLS_remote_sha = fastpls_remote_sha,
+    fastPLS_repository = as.character(fastpls_description$Repository),
     backend = backend,
     svd_method = cfg$analysis$svd_method,
     rsvd_oversample = cfg$analysis$rsvd_oversample,
@@ -309,6 +304,7 @@ run_continuous <- function(i) {
     calibration_status = "not evaluated",
     fastPLS_version = fastpls_version,
     fastPLS_remote_sha = fastpls_remote_sha, backend = backend,
+    fastPLS_repository = as.character(fastpls_description$Repository),
     svd_method = cfg$analysis$svd_method,
     rsvd_oversample = cfg$analysis$rsvd_oversample,
     rsvd_power = cfg$analysis$rsvd_power,
@@ -411,6 +407,7 @@ run_binary <- function(i) {
       output_units = "class label and uncalibrated LDA score",
       fastPLS_version = fastpls_version,
       fastPLS_remote_sha = fastpls_remote_sha,
+      fastPLS_repository = as.character(fastpls_description$Repository),
       backend = backend,
       svd_method = cfg$analysis$svd_method,
       rsvd_oversample = cfg$analysis$rsvd_oversample,
@@ -419,6 +416,7 @@ run_binary <- function(i) {
     ),
     fastPLS_version = fastpls_version,
     fastPLS_remote_sha = fastpls_remote_sha,
+    fastPLS_repository = as.character(fastpls_description$Repository),
     backend = backend,
     svd_method = cfg$analysis$svd_method,
     rsvd_oversample = cfg$analysis$rsvd_oversample,
@@ -450,6 +448,7 @@ run_binary <- function(i) {
     calibration_status = "not evaluated; LDA score is not a calibrated probability",
     fastPLS_version = fastpls_version,
     fastPLS_remote_sha = fastpls_remote_sha, backend = backend,
+    fastPLS_repository = as.character(fastpls_description$Repository),
     svd_method = cfg$analysis$svd_method,
     rsvd_oversample = cfg$analysis$rsvd_oversample,
     rsvd_power = cfg$analysis$rsvd_power,
@@ -505,6 +504,13 @@ if (!all(vapply(objects, function(z) {
 reuse_audit <- rbindlist(lapply(objects, function(z) {
   if (!is.null(z$provenance_reuse_audit)) z$provenance_reuse_audit else NULL
 }), fill = TRUE)
+if (!nrow(reuse_audit) && !ncol(reuse_audit)) {
+  reuse_audit <- data.table(
+    model_id = character(), outcome_type = character(),
+    source_fingerprint = character(), release_fingerprint = character(),
+    numerical_refit_performed = logical(), reuse_basis = character()
+  )
+}
 fwrite(reuse_audit, "results/tables/robustness_checkpoint_reuse_audit.csv")
 continuous_repeats <- rbindlist(lapply(objects, function(z) {
   if (z$registry$outcome_type == "continuous") z$repeats else NULL

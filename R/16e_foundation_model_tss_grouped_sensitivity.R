@@ -167,28 +167,14 @@ fingerprint <- digest::digest(list(
   cohorts = vapply(cohorts, `[[`, character(1), "source_sha256"),
   analysis = cfg$analysis,
   fastPLS_version = as.character(packageVersion("fastPLS")),
-  fastPLS_remote_sha = as.character(fastpls_description$RemoteSha)
+  fastPLS_remote_sha = if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
 ), algo = "sha256")
 
 checkpoint_path <- function(i) file.path(checkpoint_dir, sprintf("job_%04d.rds", i))
-# These two checkpoint fingerprints were produced by the same fitted-model
-# specification before the error-row schema was completed. Successful rows are
-# numerically reusable because the change affects only how an infeasible fit is
-# represented. Structural checks prevent reuse of incomplete error rows.
-compatible_success_fingerprints <- c(
-  "a47a494ab2a1cf79c1114d114acdf372380d837531e829ec107904627274e805",
-  "fec7e66469297ad0ff78a50fdc4f02378ba96f57fb92c8261cc5f6737cd0e8d3"
-)
 checkpoint_current <- function(path) {
   if (!file.exists(path)) return(FALSE)
   z <- tryCatch(readRDS(path), error = function(e) NULL)
-  if (is.null(z)) return(FALSE)
-  if (identical(z$fingerprint, fingerprint)) return(TRUE)
-  identical(z$fingerprint %chin% compatible_success_fingerprints, TRUE) &&
-    !is.null(z$result) && nrow(z$result) == 3L &&
-    all(z$result$feasible %in% TRUE) &&
-    all(c("grouped_crossing", "grouped_effect", "matched_random_effect") %chin%
-          names(z$result))
+  !is.null(z) && identical(z$fingerprint, fingerprint)
 }
 
 run_job <- function(i) {
@@ -413,7 +399,7 @@ run_job <- function(i) {
     }, numeric(1)),
     seed = seed,
     fastPLS_version = as.character(packageVersion("fastPLS")),
-    fastPLS_remote_sha = as.character(fastpls_description$RemoteSha)
+    fastPLS_remote_sha = if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
   )]
   result[, retained_primary_crossing :=
            feasible & primary_crossing & grouped_crossing]

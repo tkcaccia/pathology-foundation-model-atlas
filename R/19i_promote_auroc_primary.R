@@ -27,7 +27,8 @@ if (anyNA(position) || anyDuplicated(key_string(auroc))) {
 }
 
 baseline_path <- "results/tables/foundation_model_matched_screen_empirical_ba_reference.csv"
-if (!file.exists(baseline_path)) fwrite(screen, baseline_path)
+# The reference must belong to this rerun, not to a previous Git-build atlas.
+fwrite(screen, baseline_path)
 
 mapping <- c(
   balanced_accuracy = "balanced_accuracy",

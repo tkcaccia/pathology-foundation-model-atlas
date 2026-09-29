@@ -1,7 +1,7 @@
 Package: pathofmpredanalysis
 Type: Project
 Title: Patient-Level Molecular Prediction from Pathology Foundation Models
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: c(
     person("Aamilah", "Ismail", role = "aut",
       email = "aamilahismail@gmail.com"),
@@ -43,8 +43,7 @@ Imports:
     TCGAmutations,
     PathoFMPred
 Remotes:
-    tkcaccia/PathoFMPred,
-    tkcaccia/fastPLS@b518f75285c387632c2443a0c0989d75c9dcda48
+    tkcaccia/PathoFMPred
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

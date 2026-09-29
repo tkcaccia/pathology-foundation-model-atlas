@@ -72,6 +72,7 @@ scripts <- c(
   "R/10_literature_crosswalk.R",
   "R/11_package_demo.R",
   "R/11b_multifoundation_coad_demo.R",
+  "R/19h_manuscript_prediction_displays.R",
   "R/07_source_manifest.R"
 )
 start_script <- Sys.getenv("TITAN_START_SCRIPT", unset = "")
@@ -105,6 +106,16 @@ for (script in scripts) {
     )
     if (!identical(status, 0L)) {
       stop("Pipeline failed while rebuilding PathoFMPred package data")
+    }
+    status <- system2(
+      file.path(R.home("bin"), "Rscript"),
+      c(
+        "../TITANPred/tools/build_model_collections.R",
+        normalizePath("../TITANPred", mustWork = TRUE)
+      )
+    )
+    if (!identical(status, 0L)) {
+      stop("Pipeline failed while rebuilding PathoFMPred model collections")
     }
     status <- system2(
       file.path(R.home("bin"), "R"),

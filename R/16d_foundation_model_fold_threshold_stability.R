@@ -94,7 +94,7 @@ fingerprint <- digest::digest(list(
   repeats = n_repeats,
   selected_task_keys = selection[, do.call(paste, c(.SD, sep = "\r")), .SDcols = task_id],
   fastPLS_version = as.character(packageVersion("fastPLS")),
-  fastPLS_remote_sha = as.character(fastpls_description$RemoteSha)
+  fastPLS_remote_sha = if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
 ), algo = "sha256")
 
 checkpoint_path <- function(job_id, repeat_id) file.path(
@@ -233,7 +233,7 @@ run_one <- function(i) {
     primary_near_threshold = job$primary_near_threshold,
     selection_reason = job$selection_reason,
     fastPLS_version = as.character(packageVersion("fastPLS")),
-    fastPLS_remote_sha = as.character(fastpls_description$RemoteSha)
+    fastPLS_remote_sha = if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
   )]
   prediction <- rbindlist(predictions, fill = TRUE)
   prediction[, `:=`(

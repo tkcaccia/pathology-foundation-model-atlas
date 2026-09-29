@@ -18,6 +18,7 @@ manuscript/archive/
 manuscript/*.before_*.docx
 manuscript/*_revised.docx
 archive/
+rerun_archive/
 logs/
 screenlog.*
 tmp/

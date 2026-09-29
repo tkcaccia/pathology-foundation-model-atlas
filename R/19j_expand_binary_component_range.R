@@ -79,7 +79,7 @@ fingerprint <- digest::digest(list(
   estimand = "pooled inner-OOF AUROC component selection; outer OOF AUROC; training-only BA threshold",
   seed_schedule = "identical to R/19f_matched_binary_auroc_tuned_sensitivity.R",
   fastPLS_version = as.character(packageVersion("fastPLS")),
-  fastPLS_remote_sha = as.character(fastpls_description$RemoteSha)
+  fastPLS_remote_sha = if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
 ), algo = "sha256")
 
 checkpoint_path <- function(job) file.path(

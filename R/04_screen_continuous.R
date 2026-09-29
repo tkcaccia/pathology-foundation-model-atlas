@@ -35,7 +35,7 @@ analysis_fingerprint <- digest::digest(list(
   ),
   analysis = cfg$analysis,
   fastPLS_version = as.character(packageVersion("fastPLS")),
-  fastPLS_remote_sha = as.character(fastpls_description$RemoteSha),
+  fastPLS_remote_sha = if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha),
   backend = backend
 ), algo = "sha256")
 

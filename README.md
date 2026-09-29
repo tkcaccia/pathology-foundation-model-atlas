@@ -1,4 +1,4 @@
-# Multi-foundation-model patient-level prediction atlas and software framework
+# Pathology foundation-model atlas
 
 In this project, **predictability** has a narrow operational meaning: held-out
 cross-validated statistical association under the documented target, model,
@@ -13,14 +13,15 @@ alteration calls, sequencing-derived burdens, inferred cell fractions,
 transcriptomic signatures, pathology-derived quantities and composite scores.
 
 This project is positioned as a multi-representation atlas and an analysis and
-inference framework with access-controlled reference models, not as the first
+inference framework with optional fitted collections for Giga-SSL and
+Prov-GigaPath and access-controlled TITAN objects, not as the first
 pan-cancer histology-to-molecular screen. In
 particular, Arslan et al. previously trained 12,093 models for 4,031 biomarkers
 in 8,890 TCGA patients across the same 32 cancers. The machine-readable
 comparison with Fu, Kather, Saldanha, Arslan and the present study is
 [`data/reference/pan_cancer_benchmark_comparison.csv`](data/reference/pan_cancer_benchmark_comparison.csv).
 
-Public repository: https://github.com/tkcaccia/titan-prediction
+Public repository: https://github.com/tkcaccia/pathology-foundation-model-atlas
 
 Public R package: https://github.com/tkcaccia/PathoFMPred
 
@@ -43,9 +44,10 @@ separate licensing layers.
 
 ## Analysis scope
 
-The primary question is cancer-specific: **which individual molecular or
-inflammatory features can be predicted from histology-derived TITAN
-representations?** The pipeline evaluates:
+The primary question is cancer-specific: **which individual tumour and derived
+immune features can be estimated from each released histology representation,
+and how do the three pipelines compare on the same patients and outcomes?**
+The pipeline evaluates:
 
 - tissue-specific driver mutations;
 - 39 immune/inflammatory features plus 11 genomic-context scores from
@@ -208,10 +210,12 @@ metric. Balanced-accuracy crossings remain operating-rule-sensitive descriptive
 coverage summaries. Newly gained alternative-rule crossings are not described
 as permutation/FDR-qualified TITAN candidates.
 
-The matched-atlas AUROC evaluates the continuous LDA score from the component
-chosen by the documented empirical-prior inner balanced-accuracy objective. It
-therefore removes dependence on the final class cut-off, but the representation
-ranking remains conditional on the downstream component-tuning probe.
+The final matched atlas uses pooled inner out-of-fold AUROC to select the PLS
+component count and outer out-of-fold AUROC as its primary binary effect and
+crossing statistic. The empirical-prior, equal-prior and optimized-threshold
+results above are operating-rule sensitivities, not the final three-pipeline
+AUROC crossing totals. The ranking still depends on the PLS-based downstream
+probe, so it does not measure intrinsic encoder quality.
 
 Complete outputs are
 [`binary_decision_rule_sensitivity.csv`](results/tables/binary_decision_rule_sensitivity.csv),
@@ -225,13 +229,14 @@ Binary atlas eligibility remains the documented minimum of 20 positive and
 20 negative patients so that tested results are not silently discarded.
 `R/06c_binary_class_reliability.R` adds a stricter 50-per-class sensitivity and
 the development diagnostics required to interpret smaller classes. Of 459
-eligible binary targets, 244 (53.2%) meet 50 per class; 87/104 screen-positive
-binary models (83.7%) meet that standard. The remaining 17 are retained in the
-complete atlas but labelled `exploratory_limited_evidence` and excluded from
+eligible binary targets, 244 (53.2%) meet 50 per class. The refreshed candidate
+and limited-class counts are reported in the synchronized reliability tables.
+Smaller-class candidates remain in the complete atlas but are labelled
+`exploratory_limited_evidence` and excluded from
 default PathoFMPred inference.
 
-The matched three-representation atlas reports inclusive and standard-evidence
-counts in parallel. Standard evidence is a descriptive maturity label requiring
+The matched three-representation atlas reports inclusive and larger-sample
+stratum counts in parallel. This is a descriptive maturity label requiring
 n≥100 for continuous tasks or at least 50 patients per binary class. It does not
 change eligibility, threshold crossing, p-values, q-values or statistical
 significance. `R/18c_summarise_evidence_maturity.R` writes target-level and
@@ -306,21 +311,24 @@ cBioPortal Datahub and records URLs and SHA-256 digests. Screening tables
 record endpoint family, cancer type, eligibility counts, validation seed,
 software version and backend; source-specific audit tables retain their
 relevant denominator and aggregation fields. `software_manifest.csv` records
-package versions and the pinned fastPLS and TCGAmutations GitHub source
-commits.
+package versions, the CRAN fastPLS release and the pinned TCGAmutations GitHub
+source commit.
 
 ## Applying cancer-matched models in research software
 
-All 323 fitted research models are maintained in the separate, currently
-private [`PathoFMPred`](https://github.com/tkcaccia/PathoFMPred) R package. Default
-inference applies 306 models: all 219 continuous models and the 87 binary models
-with at least 50 participants in both development classes. The 17 smaller-class
-binary models remain registry-visible but require explicit opt-in. They are
-not presented as externally validated or publicly released predictors. An
-authorised research user supplies a
-cancer vector and correctly named TITAN features; `predict_titan()` applies
-every model available for each cancer and returns a long patient-model table.
-Repeated patient identifiers are mean-pooled before inference.
+The public [`PathoFMPred`](https://github.com/tkcaccia/PathoFMPred) source
+package contains a small Giga-SSL software fixture. A user may explicitly
+download the separately released, checksum-verified Giga-SSL and
+Prov-GigaPath fitted collections after installation. It contains no TITAN
+fitted parameters. The access-controlled
+[`PathoFMPred-private`](https://github.com/tkcaccia/PathoFMPred-private)
+repository holds the TITAN collection and the same analysis interface. The
+public package can also construct a local object from a feature table and an
+outcome table joined by an explicitly named patient ID, without publishing
+the resulting parameters. Model availability and predictability flags are
+recorded separately in the registry; the available collections are not a
+complete set of all descriptive threshold crossings. Neither package makes
+these internally estimated models clinically validated.
 
 ## Endpoint provenance and morphology context
 
@@ -387,7 +395,7 @@ is retained as a prominent limitation of barcode-only eligibility and motivates
 independent pathology review and tumour-area-aware aggregation in future work.
 The machine-readable audit is in `results/tables/pathology_qc_*.csv`.
 
-The revision-added pooling audit also refits every TITAN candidate after
+The pooling audit also refits every TITAN candidate after
 coordinate-wise median pooling, reports numerical slide-embedding dispersion
 for TITAN, Giga-SSL and Prov-GigaPath, and removes TCGA-DX-AB2L before refitting
 all SARC candidates. Molecular–slide linkage is reported separately in
@@ -401,23 +409,26 @@ tumour region.
 remotes::install_github("tkcaccia/PathoFMPred", dependencies = TRUE)
 library(PathoFMPred)
 
-predictions <- predict_titan(
+fetch_pathofmpred_models("GigaSSL")
+predictions <- predict_pathofm(
   cancer = my_cancer_vector,
-  features = my_titan_features,
+  features = my_gigassl_features,
+  foundation_model = "GigaSSL",
   patient_id = my_patient_ids
 )
 
 # Explicit research-only opt-in for smaller-class binary models:
-limited_predictions <- predict_titan(
+limited_predictions <- predict_pathofm(
   cancer = my_cancer_vector,
-  features = my_titan_features,
+  features = my_gigassl_features,
+  foundation_model = "GigaSSL",
   patient_id = my_patient_ids,
   outcome_type = "binary",
   include_limited_evidence = TRUE
 )
 ```
 
-`titan_sample_report()` generates a research-software HTML or PDF demonstration with a
+`pathofm_sample_report()` generates a research-software HTML or PDF demonstration with a
 continuous-endpoint radar, binary PLS-LDA calls, exact reference percentiles and
 original internally derived TCGA estimates, out-of-distribution diagnostics,
 and research-use provenance.
@@ -425,7 +436,7 @@ All endpoint definitions and model-target sources are documented at the end of
 the report. Optional descriptive pathology/source context is displayed separately
 and is never passed to the model; treatment and response narratives are excluded.
 The package's synthetic feature vector is the preferred interface smoke test.
-Two post hoc COAD interface illustrations retained as main Figure 8 and
+Two post hoc COAD interface illustrations retained as main Figures 5 and 6 and
 separate supplementary reports are available under
 [`results/reports`](results/reports/); they are not validation evidence.
 
@@ -436,14 +447,15 @@ minima, selected-component distributions, prediction stability and evidence
 tier. Models that become near chance or fall below their original effect
 threshold are labelled prominently rather than highlighted without qualification.
 
-Every bundled RDS object includes the exact 768-column feature order, slide
+Every fitted RDS object includes its representation-specific feature order, slide
 aggregation rule, cancer type, endpoint, selected component count, class counts
 and priors where applicable, endpoint transformation and output units, exact
-fastPLS version and Git commit, computation backend, and research-only
+fastPLS version and source repository, computation backend, and research-only
 intended-use statement. The analysis repository records SHA-256 hashes for all
 artifacts. The public [`models/model_registry.csv`](models/model_registry.csv)
-also records the grouped metric, delta, number of sites, fold-size range, inner
-site-separation audit and site-robustness warning for all 323 models. The objects
+also records the grouped metric, delta, number of tissue-source-site codes,
+fold-size range, inner grouping audit and cohort-structure warning for the
+supporting TITAN models. The objects
 contain no patient-level training rows.
 
 PLS and PLS–LDA are parametric models: external prediction needs the learned
@@ -461,27 +473,29 @@ research models, not medical devices and not suitable for patient care.
 
 Sensitivity to grouping by TCGA tissue-source-site code is a principal result. For the central
 three-representation benchmark, `R/16e_foundation_model_tss_grouped_sensitivity.R`
-reruns all 340 union-positive tasks in TITAN, Giga-SSL and Prov-GigaPath with complete
+reruns every union-crossing task in TITAN, Giga-SSL and Prov-GigaPath with complete
 two-character codes held apart in both outer and inner validation. Each task uses identical
 patients, folds, seeds and tuning rules across representations. Matched-random controls preserve
 outer-fold sizes and binary class counts. Outputs are:
 
-- `foundation_model_tss_grouped_sensitivity.csv` (1,020 representation–task estimates);
+- `foundation_model_tss_grouped_sensitivity.csv` (one record per representation and task);
 - `foundation_model_tss_grouped_fold_audit.csv` (fold invariants);
 - `foundation_model_tss_grouped_summary.csv` (representation-level retention);
 - `foundation_model_consensus_tss_crosstab.csv` (consensus versus grouped retention);
 - `foundation_model_internal_robustness_classification.csv` (R1–R4 internal prioritisation);
 - `foundation_model_tss_code_only_outcomes.csv` (code-only outcome predictability).
 
-R1–R4 combine representation consensus, sample-size maturity and grouped retention. They are
-internal prioritisation classes, not clinical evidence grades, proof of confounding, or external
-validation. Multi-representation consensus alone is not described as cohort-structure robustness.
+R1–R4 are deprecated database-navigation tags combining representation consensus,
+sample-size maturity and grouped retention. They are not clinical evidence grades,
+proof of confounding, or external validation. Multi-representation consensus alone
+is not described as cohort-structure robustness.
 
-The separate larger TITAN-only layer found that, under grouped internal
-validation, 83/323 screen-positive models (25.7%) fell below their original
-documented screening threshold. Complete target-level performance is provided in
+The separate larger TITAN-only layer found that a substantial fraction of
+permutation/FDR-filtered candidates fell below their original balanced-accuracy
+or Q² effect threshold under grouped internal validation. The current count is
+reported in the regenerated summary, and complete target-level performance is in
 [`results/tables/site_grouped_models_below_effect_threshold.csv`](results/tables/site_grouped_models_below_effect_threshold.csv),
-and all 1,613 outer-fold patient, site and binary class counts are in
+and all outer-fold patient, code and binary class counts are in
 [`results/tables/site_grouped_outer_fold_composition.csv`](results/tables/site_grouped_outer_fold_composition.csv).
 The deterministic audit confirms that complete sites were kept together during
 both outer evaluation and inner component selection.
@@ -489,9 +503,8 @@ both outer evaluation and inner component selection.
 `R/07g_site_partition_controls.R` adds matched random partitions with identical
 outer test sizes and, for binary outcomes, identical positive/negative counts;
 1,000-replicate paired patient-resampling intervals; code-only outcome
-prediction; and code-specific outcome-distribution heterogeneity. Median
-grouped-minus-matched-random changes were −0.006 balanced-accuracy units and
-−0.020 Q² units. Complete results are in
+prediction; and code-specific outcome-distribution heterogeneity. Complete
+grouped-minus-matched-random changes are in
 [`results/tables/tissue_source_site_partition_controls.csv`](results/tables/tissue_source_site_partition_controls.csv).
 These controls distinguish generic partition difficulty from residual
 code-associated sensitivity, but cannot identify technical versus biological
@@ -570,17 +583,17 @@ retained only as sensitivity material and do not define the current atlas.
 
 ## Fold-assignment and threshold stability of the matched atlas
 
-`R/16d_foundation_model_fold_threshold_stability.R` is a revision-added audit
+`R/16d_foundation_model_fold_threshold_stability.R` is an additional audit
 of every primary-partition union-positive task and every task lying within
-±0.05 of Q²=0.20 or balanced accuracy=0.60 for at least one representation.
-This fixed rule selects 560 unique tasks (322 continuous and 238 binary).
+±0.05 of Q²=0.20 or AUROC=0.60 for at least one representation.
+The selected task count is recorded in `foundation_model_fold_stability_selection.csv`.
 Five new nested 5×5 partitions are run for each task, with identical patients,
 folds, seeds and tuning rules across TITAN, Giga-SSL and Prov-GigaPath.
 
 The analysis reports each representation's crossing proportion, the repeated
 stability of all-three/exactly-two/representation-specific/none consensus
 classes, continuous paired effects and ranks, and threshold-sensitivity curves
-over Q² 0.10–0.30 and balanced accuracy 0.55–0.65. Fold hashes and fold-level
+over Q² 0.10–0.30 and AUROC 0.55–0.65. Fold hashes and fold-level
 class counts make the matching auditable. These repeated internal partitions
 measure fold-assignment sensitivity; they do not supply external validation or
 turn a threshold-derived label into a biological category. Complete outputs
@@ -639,8 +652,8 @@ before result commit `47fa5b9`.
 
 ## Catalogue-normalized breadth
 
-The matched atlas has 1,933 cancer–endpoint tasks but only 187 exact endpoint
-definitions (56 continuous and 131 binary). Related definitions are correlated
+The matched atlas has 3,389 cancer-endpoint tasks but only 239 exact endpoint
+definitions (108 continuous and 131 binary). Related definitions are correlated
 and many are repeated across cancers, so raw threshold-crossing counts measure
 task-level breadth within this catalogue—not independent biological discoveries.
 The comparison therefore reports task crossing percentages, unique-definition
@@ -657,7 +670,7 @@ the cancers retaining each endpoint or broader programme. Complete outputs are:
 
 Continuous counts are especially catalogue-dependent. RNA pathway scores
 account for 447/643 TITAN, 305/441 Prov-GigaPath and 249/362 Giga-SSL continuous
-crossings. Figure 2 and manuscript Table 2 therefore lead with provenance-
+crossings. Figure 2 and manuscript Table 1 therefore lead with provenance-
 stratified rates and normalized measures rather than raw totals.
 
 ## License and attribution
@@ -692,3 +705,6 @@ downstream-asset terms to the extent that the PathoFMPred authors hold rights in
 them, without replacing upstream notices. This is an access and attribution
 policy, not a legal determination. See [`provenance/SOURCES.md`](provenance/SOURCES.md)
 and [`data/reference/software_access_licensing_matrix.csv`](data/reference/software_access_licensing_matrix.csv).
+
+The CRAN fastPLS 0.3 rerun and release checks are recorded in
+[`provenance/CRAN_FASTPLS_0.3_RERUN_AUDIT.md`](provenance/CRAN_FASTPLS_0.3_RERUN_AUDIT.md).

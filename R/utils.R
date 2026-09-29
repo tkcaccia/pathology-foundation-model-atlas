@@ -1,7 +1,7 @@
 project_root <- function() {
   wd <- normalizePath(getwd(), mustWork = TRUE)
   if (file.exists(file.path(wd, "config", "analysis.R"))) return(wd)
-  stop("Run scripts from the titan-prediction repository root.")
+  stop("Run scripts from the pathology-foundation-model-atlas repository root.")
 }
 
 load_project_config <- function() {

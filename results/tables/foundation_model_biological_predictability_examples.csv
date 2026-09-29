@@ -1,7 +1,7 @@
 outcome_type,tumor_type,family,endpoint,display_label,n,effect_TITAN,effect_GigaSSL,effect_ProvGigaPath,tss_retention_class
 binary,THYM,driver_mutation,GTF2I,THYM: GTF2I mutation,116,0.903657448706512,0.88373476063039,0.893250074338388,complete retention
 binary,COAD,microsatellite_instability_sensitivity,MSI-H strict (MANTIS >0.6),COAD: MSI-H strict (MANTIS >0.6),373,0.940232086525462,0.850777377196936,0.857311852185669,complete retention
-binary,LGG,oncogenic_pathway,TP53,LGG: TP53,481,0.889779177627025,0.836044579814482,0.860739997231067,complete retention
+binary,LGG,oncogenic_pathway,TP53,LGG: TP53 pathway alteration,481,0.889779177627025,0.836044579814482,0.860739997231067,complete retention
 binary,STAD,microsatellite_instability,MSI-H (MANTIS >0.4),STAD: MSI-H (MANTIS >0.4),365,0.887788778877888,0.78867241562866,0.809219631640583,complete retention
 binary,COAD,aneuploidy,Genome doubling,COAD: Genome doubling,407,0.745679939894816,0.763461056849487,0.76481342349111,complete retention
 binary,THCA,fusion,Any called fusion,THCA: Any called fusion,492,0.662889815066915,0.666429304458919,0.691017236685027,complete retention

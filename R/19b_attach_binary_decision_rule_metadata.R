@@ -6,7 +6,11 @@ component_ceiling <- max(as.integer(cfg$analysis$components))
 
 sensitivity <- fread("results/tables/binary_decision_rule_sensitivity.csv")
 fastpls_description <- packageDescription("fastPLS")
-fastpls_remote_sha <- as.character(fastpls_description$RemoteSha)
+fastpls_remote_sha <- if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)
+for (column in intersect(c("fastPLS_version", "fastPLS_remote_sha"),
+                         names(sensitivity))) {
+  sensitivity[, (column) := NULL]
+}
 sensitivity[, `:=`(
   fastPLS_version = as.character(packageVersion("fastPLS")),
   fastPLS_remote_sha = fastpls_remote_sha
@@ -61,6 +65,9 @@ max_delta <- max(abs(
 if (max_delta > 1e-10) {
   stop("Current-package TITAN screen was not reproduced; maximum BA delta=", max_delta)
 }
+if ("fastPLS_remote_sha" %in% names(full)) {
+  full[, fastPLS_remote_sha := NULL]
+}
 full[, `:=`(
   foundation_model = NULL,
   fastPLS_remote_sha = fastpls_remote_sha,
@@ -106,6 +113,12 @@ matched_fold_summary <- folds[layer == "matched three-representation atlas", .(
   selected_components_ceiling_fraction_current = mean(primary_component == component_ceiling)
 ), by = key]
 matched <- merge(matched, matched_fold_summary, by = key, all.x = TRUE, sort = FALSE)
+if ("fastPLS_version_current" %in% names(matched)) {
+  matched[, fastPLS_version_current := as.character(fastPLS_version_current)]
+}
+if ("fastPLS_remote_sha_current" %in% names(matched)) {
+  matched[, fastPLS_remote_sha_current := NULL]
+}
 matched[binary_rows, `:=`(
   selected_components_min = selected_components_min_current,
   selected_components_max = selected_components_max_current,
