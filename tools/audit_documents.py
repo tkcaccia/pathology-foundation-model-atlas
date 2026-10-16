@@ -74,6 +74,8 @@ require("representation pipelines" not in main_text.lower() and
         "The three slide representations are still called pipelines")
 require("No structured field for tumour cellularity" not in main_text,
         "Removed Methods sentence has reappeared")
+require("PanImmune workbook of Thorsson et al. [19]" in main_text,
+        "The PanImmune identifier statement lacks its source citation")
 require("8,241" in main_text and "3,389" in main_text and "30 cancers" in main_text,
         "Current matched-cohort counts are missing")
 require("1 to 20" in main_text or "1-to-20" in main_text,
