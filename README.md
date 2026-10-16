@@ -7,7 +7,7 @@ information, a histological mechanism, direct recovery of the source
 measurement, assay equivalence or justification for replacing an assay.
 
 Reproducible, patient-level prediction of molecular, derived immune and genomic
-features from fixed pretrained TITAN, Giga-SSL and Prov-GigaPath whole-slide representations across 32 TCGA cancer
+features from the released TITAN, Giga-SSL and Prov-GigaPath slide representations across 32 TCGA cancer
 types. These labels are not assay-equivalent: the benchmark includes direct
 alteration calls, sequencing-derived burdens, inferred cell fractions,
 transcriptomic signatures, pathology-derived quantities and composite scores.
@@ -45,9 +45,9 @@ separate licensing layers.
 ## Analysis scope
 
 The primary question is cancer-specific: **which individual tumour and derived
-immune features can be estimated from each released histology representation,
-and how do the three pipelines compare on the same patients and outcomes?**
-The pipeline evaluates:
+immune features can be estimated from each released slide representation,
+and how do the three representations compare on the same patients and outcomes?**
+The analysis evaluates:
 
 - tissue-specific driver mutations;
 - 39 immune/inflammatory features plus 11 genomic-context scores from
@@ -213,7 +213,7 @@ as permutation/FDR-qualified TITAN candidates.
 The final matched atlas uses pooled inner out-of-fold AUROC to select the PLS
 component count and outer out-of-fold AUROC as its primary binary effect and
 crossing statistic. The empirical-prior, equal-prior and optimized-threshold
-results above are operating-rule sensitivities, not the final three-pipeline
+results above are operating-rule sensitivities, not the final three-representation
 AUROC crossing totals. The ranking still depends on the PLS-based downstream
 probe, so it does not measure intrinsic encoder quality.
 
