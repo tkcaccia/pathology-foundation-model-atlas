@@ -67,8 +67,13 @@ with ZipFile(OUT / "manuscript_JTM_multifoundation_atlas.docx") as archive:
 require(b'w:type="page"' not in manuscript_xml and b"w:pageBreakBefore" not in manuscript_xml,
         "The main manuscript contains a manual page break")
 
-require("Patient-level comparison of three released pathology representation pipelines" in main_text,
+require("Patient-level comparison of three released pathology slide representations" in main_text,
         "Current title is missing")
+require("representation pipelines" not in main_text.lower() and
+        "representation pipelines" not in supp_text.lower(),
+        "The three slide representations are still called pipelines")
+require("No structured field for tumour cellularity" not in main_text,
+        "Removed Methods sentence has reappeared")
 require("8,241" in main_text and "3,389" in main_text and "30 cancers" in main_text,
         "Current matched-cohort counts are missing")
 require("1 to 20" in main_text or "1-to-20" in main_text,
@@ -125,12 +130,14 @@ require("Figure 3. Foundation-model leadership" in main_text and
 same_histology = {row["foundation_model"]: row for row in
                   csv_rows("foundation_model_same_histology_sensitivity.csv")}
 expected_continuous = (
-    same_histology["TITAN"]["cross_modal_continuous_crossings"] + ", " +
-    same_histology["GigaSSL"]["cross_modal_continuous_crossings"] + " and " +
-    same_histology["ProvGigaPath"]["cross_modal_continuous_crossings"]
+    same_histology["TITAN"]["cross_modal_continuous_crossings"] + "/2,952 TITAN, " +
+    same_histology["GigaSSL"]["cross_modal_continuous_crossings"] + "/2,952 Giga-SSL and " +
+    same_histology["ProvGigaPath"]["cross_modal_continuous_crossings"] + "/2,952 Prov-GigaPath"
 )
 require(expected_continuous in main_text,
         "Abstract representation order or continuous counts are inconsistent")
+require("Giulia Canarutto" in main_text,
+        "Giulia Canarutto is missing from the manuscript")
 coad_binary = csv_rows("coad_pathofmpred_multifoundation_binary_predictions.csv")
 coad_counts = {
     model: len({(row["family"], row["endpoint"]) for row in coad_binary
@@ -142,12 +149,21 @@ for model, count in coad_counts.items():
     display = {"GigaSSL": "Giga-SSL", "ProvGigaPath": "Prov-GigaPath"}.get(model, model)
     require(f"{display} returned {count}" in main_text,
             f"COAD binary model count is not synchronized for {model}")
-require("GPL-3.0-or-later companion analysis repository" in supp_text,
-        "Analysis-repository license statement is missing")
-require("PathoFMPred contributor-authored source code and documentation are released under the MIT License" in supp_text,
+require("public companion analysis repository" in supp_text,
+        "Analysis-repository access statement is missing")
+require("PathoFMPred contributor-authored source code and documentation use the MIT License" in supp_text,
         "PathoFMPred MIT source-code statement is missing")
-require("TITAN fitted collection is excluded from the public repository" in supp_text,
+require("TITAN-derived fitted parameters are not distributed publicly" in supp_text,
         "TITAN redistribution boundary is missing")
+require("public package contains no fitted model objects" in supp_text,
+        "Current model-free public package status is missing")
+require("Additional file 4" in main_text and "Additional file 4" in supp_text,
+        "Machine-readable Additional file 4 is not declared consistently")
+with ZipFile(OUT / "Additional_file_4_machine_readable_results.zip") as companion:
+    require("README.txt" in companion.namelist() and
+            "MANIFEST.csv" in companion.namelist() and
+            len([name for name in companion.namelist() if name.endswith(".csv")]) == 17,
+            "Additional file 4 inventory is incomplete")
 require("—" not in combined, "Em dash remains in the submission documents")
 
 

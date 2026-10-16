@@ -32,7 +32,7 @@ MODEL_REPO = os.environ.get(
     "PATHOFM_MODEL_REPOSITORY_URL", "https://github.com/tkcaccia/PathoFMPred"
 )
 MANUSCRIPT_TITLE = (
-    "Patient-level comparison of three released pathology representation pipelines "
+    "Patient-level comparison of three released pathology slide representations "
     "with a common PLS-based probe across TCGA cancers"
 )
 
@@ -305,15 +305,30 @@ def standardize_matched_evidence_terms(document):
 
 
 def standardize_released_pipeline_terms(document):
-    """Describe the evaluated artifacts as complete released representation pipelines."""
+    """Use slide representation for model outputs and pipeline for processing steps."""
     replacements = (
-        ("released pathology embedding pipelines", "released pathology representation pipelines"),
-        ("released embedding pipelines", "released representation pipelines"),
-        ("released embedding pipeline", "released representation pipeline"),
-        ("complete released pipelines", "complete released representation pipelines"),
-        ("three released pipelines", "three released representation pipelines"),
-        ("embedding-pipeline-probe", "representation-pipeline-probe"),
-        ("embedding-pipeline and probe", "representation-pipeline and probe"),
+        ("released pathology representation pipelines", "released pathology slide representations"),
+        ("released pathology embedding pipelines", "released pathology slide representations"),
+        ("released representation pipelines", "released slide representations"),
+        ("released embedding pipelines", "released slide representations"),
+        ("three representation pipelines", "three slide representations"),
+        ("all three representation pipelines", "all three slide representations"),
+        ("both representation pipelines", "both slide representations"),
+        ("representation pipelines", "slide representations"),
+        ("all three pipelines", "all three slide representations"),
+        ("both pipelines", "both slide representations"),
+        ("each pipeline", "each slide representation"),
+        ("released pipelines", "released slide representations"),
+        ("matched pipelines", "matched slide representations"),
+        ("which pipelines crossed", "which slide representations crossed"),
+        ("for every pipeline", "for every slide representation"),
+        ("in at least one pipeline", "in at least one slide representation"),
+        ("compares complete pipelines", "compares the full process used to generate each slide representation"),
+        ("choosing one pipeline for every task", "choosing one slide representation for every task"),
+        ("three-pipeline", "three-representation"),
+        ("pipeline-specific", "representation-specific"),
+        ("Pipeline ranking", "Representation ranking"),
+        ("Pipelines crossing", "Slide representations crossing"),
     )
     for text_node in document.element.body.iter(qn("w:t")):
         if not text_node.text:
@@ -903,6 +918,14 @@ def matched_metric_triplet(outcome, tumour, family, endpoint, field):
         fnum(foundation_matched_by_key[(model, outcome, family, tumour, endpoint)][field])
         for model in ("TITAN", "GigaSSL", "ProvGigaPath")
     )
+
+
+def matched_metric_range(outcome, tumour, family, endpoint, field):
+    values = [
+        float(foundation_matched_by_key[(model, outcome, family, tumour, endpoint)][field])
+        for model in ("TITAN", "GigaSSL", "ProvGigaPath")
+    ]
+    return f"{min(values):.3f} to {max(values):.3f}"
 foundation_pairwise_by_key = {
     (r["comparison"], r["outcome_type"]): r for r in foundation_pairwise
 }
@@ -999,11 +1022,9 @@ def matched_example(tumour, endpoint, label):
         return None
     metric = "AUROC" if row["outcome_type"] == "binary" else "Q²"
     prefix = "auc" if row["outcome_type"] == "binary" else "q2"
-    values = ", ".join(
-        fnum(row[f"{prefix}_{model}"], 3)
-        for model in ("TITAN", "GigaSSL", "ProvGigaPath")
-    )
-    return f"{label} ({metric} {values})"
+    values = [float(row[f"{prefix}_{model}"])
+              for model in ("TITAN", "GigaSSL", "ProvGigaPath")]
+    return f"{label} ({metric} {min(values):.3f} to {max(values):.3f})"
 
 abstract_shared_examples = [
     matched_example("THYM", "GTF2I", "THYM GTF2I mutation"),
@@ -1031,11 +1052,9 @@ supported_b = [r for r in binary if r["tier"] in ("A", "B")]
 titan_candidate_total = len(supported_c) + len(supported_b)
 
 def foundation_crossings(model, outcome):
-    row = foundation_summary_by_key.get((model, outcome), {})
-    return ival(
-        row.get("screening_positive")
-        or row.get("screen_statistic_ge_tier_B")
-    )
+    # The matched atlas uses AUROC-centred binary crossing counts. The older
+    # matched_summary CSV retains historical balanced-accuracy screen counts.
+    return ival(foundation_breadth_by_key[(model, outcome)]["task_crossings"])
 
 def foundation_breadth(model, outcome, field):
     return float(foundation_breadth_by_key[(model, outcome)][field])
@@ -1750,18 +1769,19 @@ p = doc.add_paragraph(style="Title"); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p.add_run(MANUSCRIPT_TITLE)
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 authors = [
-    ("Aamilah Ismail", "3,*"),
-    ("Martin Ocharo", "1,2,*"),
-    ("Moussa Kassim", "1,2"),
-    ("Dalia Ahmed", "1"),
-    ("Brendon Price", "5"),
-    ("Dupe Ojo", "1"),
-    ("Ekene Emmanuel Nweke", "4"),
-    ("Silvano Piazza", "6,8"),
-    ("Dinesh Gupta", "7"),
-    ("Alessia Vignoli", "9,10"),
-    ("Leonardo Tenori", "9,10"),
-    ("Stefano Cacciatore", "1,2,†"),
+    ("Aamilah Ismail", "1,*"),
+    ("Martin Ocharo", "2,3,*"),
+    ("Giulia Canarutto", "4,5"),
+    ("Moussa Kassim Mohamed", "2,3"),
+    ("Dalia Ahmed", "2"),
+    ("Brendon Price", "6"),
+    ("Dupe Ojo", "2"),
+    ("Ekene Emmanuel Nweke", "7"),
+    ("Alessia Vignoli", "8,9"),
+    ("Silvano Piazza", "4,10"),
+    ("Dinesh Gupta", "11"),
+    ("Leonardo Tenori", "8,9"),
+    ("Stefano Cacciatore", "2,3,†"),
 ]
 for i, (name, markers) in enumerate(authors):
     if i:
@@ -1771,40 +1791,41 @@ for i, (name, markers) in enumerate(authors):
     marker_run.font.superscript = True
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p.add_run("1 ").bold = True
-p.add_run("Bioinformatics Unit, International Centre for Genetic Engineering and Biotechnology (ICGEB), Cape Town 7925, South Africa")
-p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-p.add_run("2 ").bold = True
-p.add_run("Department of Integrative Biomedical Sciences, Institute of Infectious Disease & Molecular Medicine (IDM), University of Cape Town, Cape Town 7925, South Africa")
-p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-p.add_run("3 ").bold = True
 p.add_run("Division of Engineering, New York University Abu Dhabi, Abu Dhabi, United Arab Emirates")
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+p.add_run("2 ").bold = True
+p.add_run("Bioinformatics Unit, International Centre for Genetic Engineering and Biotechnology (ICGEB), Cape Town 7925, South Africa")
+p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+p.add_run("3 ").bold = True
+p.add_run("Department of Integrative Biomedical Sciences, Institute of Infectious Disease & Molecular Medicine (IDM), University of Cape Town, Cape Town 7925, South Africa")
+p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p.add_run("4 ").bold = True
-p.add_run("Department of Surgery, School of Clinical Medicine, Faculty of Health Sciences, University of the Witwatersrand, Johannesburg, Gauteng, South Africa")
-p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-p.add_run("5 ").bold = True
-p.add_run("Division of Anatomical Pathology, University of Cape Town and National Health Laboratory Service, Observatory, Cape Town, South Africa")
-p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-p.add_run("6 ").bold = True
 p.add_run("Computational Biology Group, International Centre for Genetic Engineering and Biotechnology (ICGEB), Trieste, Italy")
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+p.add_run("5 ").bold = True
+p.add_run("Life Science Department (DSV), University of Trieste, Trieste, Italy")
+p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+p.add_run("6 ").bold = True
+p.add_run("Division of Anatomical Pathology, University of Cape Town and National Health Laboratory Service, Observatory, Cape Town, South Africa")
+p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p.add_run("7 ").bold = True
-p.add_run("Translational Bioinformatics Group, International Centre for Genetic Engineering and Biotechnology (ICGEB), Aruna Asaf Ali Marg, New Delhi 110067, India")
+p.add_run("Department of Surgery, School of Clinical Medicine, Faculty of Health Sciences, University of the Witwatersrand, Johannesburg, Gauteng, South Africa")
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p.add_run("8 ").bold = True
-p.add_run("Bioinformatics Facility, Department of Cellular, Computational and Integrative Biology - CIBIO, University of Trento, Trento, Italy")
-p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-p.add_run("9 ").bold = True
 p.add_run('Department of Chemistry "Ugo Schiff", University of Florence, Sesto Fiorentino, Italy')
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-p.add_run("10 ").bold = True
+p.add_run("9 ").bold = True
 p.add_run("Magnetic Resonance Center (CERM), University of Florence, Sesto Fiorentino, Italy")
+p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+p.add_run("10 ").bold = True
+p.add_run("Bioinformatics Facility, Department of Cellular, Computational and Integrative Biology - CIBIO, University of Trento, Trento, Italy")
+p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+p.add_run("11 ").bold = True
+p.add_run("Translational Bioinformatics Group, International Centre for Genetic Engineering and Biotechnology (ICGEB), Aruna Asaf Ali Marg, New Delhi 110067, India")
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p.add_run("* These authors contributed equally.").italic = True
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p.add_run("† Corresponding author: Stefano Cacciatore (stefano.cacciatore@icgeb.org).").italic = True
-p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-p.add_run("Author emails: aamilahismail@gmail.com; moussa.kassim@icgeb.org; dalia.ahmed@icgeb.org; dupe.ojo@icgeb.org; vignoli@cerm.unifi.it; tenori@cerm.unifi.it; stefano.cacciatore@icgeb.org")
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p.add_run("Research article: Molecular Pathology | Journal of Translational Medicine")
 
@@ -1821,7 +1842,7 @@ doc.add_heading("Abstract", level=1)
 add_labelled(
     doc,
     "Background.",
-    "Haematoxylin and eosin (H&E) slides reflect tumour genotype and microenvironment, but the features recoverable across pathology representation pipelines remain unclear. We compared three released whole-slide representations for cancer-specific genomic, pathway and derived immune outcomes."
+    "Haematoxylin and eosin (H&E) slides reflect tumour genotype and microenvironment, but it remains unclear which features can be estimated consistently from different pathology foundation-model representations. We compared slide representations from three pretrained models for cancer-specific genomic, pathway and derived immune outcomes."
 )
 add_labelled(
     doc,
@@ -1838,23 +1859,23 @@ add_labelled(
     f"of {matched_binary_n} binary tasks, including "
     f"{', '.join(str(ival(foundation_provenance_by_key[(m, 'binary', 'directly observed genomic alteration')]['effect_threshold_crossings'])) for m in ('TITAN', 'GigaSSL', 'ProvGigaPath'))} "
     f"of {ival(foundation_provenance_by_key[('TITAN', 'binary', 'directly observed genomic alteration')]['eligible_tasks'])} directly observed genomic-alteration tasks. "
-    f"Shared examples included {'; '.join(abstract_shared_examples)}, with values ordered as TITAN, Giga-SSL and Prov-GigaPath. "
-    f"No pipeline led every endpoint. In the supporting TITAN screen, grouping by tissue-source-site code moved "
+    f"Illustrative associations shared by all three representations included {'; '.join(abstract_shared_examples)}. "
+    f"No representation led every endpoint. In the supporting TITAN screen, grouping by tissue-source-site code moved "
     f"{ival(site_combined.get('below_threshold_models'))} of {ival(site_combined.get('screen_positive_models'))} candidates "
     f"below their original threshold and reduced COAD-APC and READ-APC performance towards chance."
 )
 add_labelled(
     doc,
     "Conclusions.",
-    "The three pipelines recovered partly shared cancer-specific genomic and derived-phenotype signals under this PLS probe. TITAN crossed the most catalogue thresholds, but no pipeline led every feature. The atlas and PathoFMPred prioritize independent validation; these TCGA estimates do not support clinical use."
+    "The three representations recovered partly shared cancer-specific genomic and derived-phenotype signals under this PLS probe. TITAN crossed the most catalogue thresholds, but no representation led every feature. The atlas and PathoFMPred prioritize independent validation; these TCGA estimates do not support clinical use."
 )
 doc.add_paragraph("Keywords: computational pathology; whole-slide imaging; foundation model; mutation; inflammation; microsatellite instability; gene fusion; aneuploidy; partial least squares; linear discriminant analysis")
 
 doc.add_heading("Background", level=1)
-doc.add_paragraph("A haematoxylin-and-eosin (H&E) slide captures tumour architecture, cell morphology and the surrounding tissue. A pathology foundation model learns a reusable representation of such images before it is trained for any one clinical question. In self-supervised vision models such as DINOv2, the image itself supplies the learning signal [43]. Pathology models extend this idea from small tissue regions to whole slides and provide a fixed numerical vector that can be tested against many outcomes. The vector does not predict a mutation by itself: a downstream model must learn that association from labelled patients. Because genotype, immune activity and tissue context can all shape morphology, routine slides offer a plausible source of tumour-feature signals.")
+doc.add_paragraph("A haematoxylin-and-eosin (H&E) slide shows tumour architecture, cell morphology and the surrounding tissue. A foundation model first learns visual patterns from large image collections without being trained for each molecular question. DINOv2 illustrates this self-supervised approach in general computer vision [43]. Pathology models adapt it to tissue images and, in some cases, aggregate information across an entire slide. Their output is a numerical representation, not a mutation call: a separate model must learn the link between that representation and an outcome measured in labelled patients. This separation lets us ask, using the same slides, whether morphology carries information about genotype, immune-related programmes or genomic context.")
 doc.add_paragraph("Histology-based prediction already has a substantial literature. Coudray and colleagues predicted lung-cancer mutations [1], and subsequent studies estimated microsatellite instability, including in externally tested colorectal cohorts [2,3]. Fu et al. screened 17,355 slides across 28 cancers [4]; Kather et al. analysed more than 5,000 patients across 14 cancers [5]; and Arslan et al. trained 12,093 models for 4,031 biomarkers in 8,890 TCGA patients across 32 cancers [13]. Other work examined RNA expression [6,12], cross-institution mutation performance [7,11], gene fusions [9,10], homologous-recombination deficiency [14] and tumour-microenvironment phenotypes [15]. These studies establish the field, but their cohorts, endpoint catalogues and image representations differ, which makes feature-level comparisons difficult.")
-doc.add_paragraph("We built a patient-level atlas to ask which tumour features can be estimated from the same TCGA patients using three released pathology representations. We compared TITAN, Giga-SSL and Prov-GigaPath on identical labelled patients and validation folds, retained tested-negative and sample-size-ineligible tasks, and examined alternative fold assignments and TCGA tissue-source-site-code grouping. We then ran a deeper permutation and false-discovery-rate-controlled screen in the larger TITAN cohort. We created PathoFMPred to record and apply the fitted research models; the software supports reproducibility but is not the main scientific result or a source of external validation.")
-doc.add_paragraph("The three representations encode different upstream pipelines. TITAN combines visual self-supervision with vision-language alignment; its reported Mass-340K pretraining corpus excluded TCGA, although TCGA was used for downstream evaluation [16]. Giga-SSL provides self-supervised whole-slide embeddings and used TCGA during development, so exposure to the evaluated images cannot be excluded [39]. Prov-GigaPath combines a tile encoder with a long-context slide encoder trained on Providence health-system pathology data; we used its released final-layer TCGA embeddings [40]. We did not fine-tune these encoders or use molecular labels to learn the representations. The comparison therefore measures the released pipelines, including differences in preprocessing, resolution, training exposure and output layer, under one PLS-based downstream analysis. It does not isolate intrinsic foundation-model quality.")
+doc.add_paragraph("We asked which tumour features can be estimated from H&E using three released slide representations of the same TCGA patients. For each cancer-specific outcome, we compared TITAN, Giga-SSL and Prov-GigaPath on matched patients and validation folds. We retained unsuccessful and sample-size-ineligible tasks, tested the sensitivity of results to new fold assignments and grouping by TCGA tissue-source-site code, and examined a larger TITAN cohort with permutation and false-discovery-rate control. We also developed PathoFMPred to store and apply compatible fitted research models. The package makes the results easier to inspect and reuse, but the biological benchmark is the central contribution.")
+doc.add_paragraph("The three slide representations differ in how they were trained and constructed. TITAN combines visual self-supervision with vision-language alignment; its reported Mass-340K pretraining corpus excluded TCGA, although TCGA was used for downstream evaluation [16]. Giga-SSL provides self-supervised whole-slide embeddings and used TCGA during development, so exposure to the evaluated images cannot be excluded [39]. Prov-GigaPath combines a tile encoder with a long-context slide encoder trained on Providence health-system pathology data; we used its released final-layer TCGA embeddings [40]. We did not fine-tune these encoders or use molecular labels to learn the representations. Our comparison includes differences in preprocessing, resolution, training exposure and output layer under one PLS-based downstream analysis. It does not isolate intrinsic foundation-model quality.")
 doc.add_paragraph("A cancer-endpoint pair combines one cancer type with one outcome, such as APC mutation in COAD or an RNA wound-healing signature in LIHC. Each pair defines a separate cancer-specific task; we never pooled cancers into one prediction model. The catalogue included mutations, fusions, microsatellite instability, genome doubling and oncogenic-pathway alterations, as well as sequencing-derived burdens, transcriptomic inflammatory programmes, inferred immune-cell fractions and genomic-context scores. Throughout this article, predictability means held-out statistical agreement with the supplied reference phenotype, not causality or assay replacement.")
 
 doc.add_heading("Methods", level=1)
@@ -2773,15 +2794,16 @@ credit_statement = (
     "Software, Validation, Visualization, Writing - original draft, Writing - "
     "review and editing. Martin Ocharo: Data curation, Formal analysis, "
     "Investigation, Methodology, Software, Validation, Visualization, Writing - "
-    "original draft, Writing - review and editing. Moussa Kassim: Data curation, "
+    "original draft, Writing - review and editing. Giulia Canarutto: CRediT roles "
+    "to be confirmed. Moussa Kassim Mohamed: Data curation, "
     "Investigation, Validation, Writing - review and editing. Dalia Ahmed: Data "
     "curation, Investigation, Validation, Writing - review and editing. Brendon "
     "Price: Investigation, Validation, Writing - review and editing. Dupe Ojo: "
     "Data curation, Investigation, Validation, Writing - review and editing. "
     "Ekene Emmanuel Nweke: Investigation, Validation, Writing - review and "
+    "editing. Alessia Vignoli: Methodology, Validation, Writing - review and "
     "editing. Silvano Piazza: Methodology, Software, Validation, Writing - review "
     "and editing. Dinesh Gupta: Methodology, Supervision, Validation, Writing - "
-    "review and editing. Alessia Vignoli: Methodology, Validation, Writing - "
     "review and editing. Leonardo Tenori: Conceptualization, Methodology, "
     "Supervision, Writing - review and editing. Stefano Cacciatore: "
     "Conceptualization, Data curation, Formal analysis, Methodology, Project "
@@ -2794,7 +2816,7 @@ for h, text in [
     ("Consent for publication", "Not applicable."),
     ("Study registration and protocol", "We did not prospectively register this retrospective computational benchmark."),
     ("Patient and public involvement", "We did not involve patients or members of the public in the design, conduct, interpretation or reporting of this secondary analysis."),
-    ("Availability of data and materials", f"We used the official TITAN TCGA feature artifact, official Giga-SSL TCGA embeddings and the seandavis/tcga_provgigapath_embeddings Hugging Face dataset. The companion repository provides conversion scripts, source locations, access conditions, SHA-256 checksums and complete-resolution result companions [30]. We do not redistribute controlled-access whole-slide images; the cited sources provide access to TCGA molecular data. No persistent DOI has been assigned at the authors' request. PathoFMPred source code is released under the MIT licence. The public package contains a minimal Giga-SSL fixture and offers explicit user-invoked downloads of the permitted Giga-SSL and Prov-GigaPath fitted collections, whose asset terms and upstream attribution are stated separately. The TITAN fitted collection is excluded from the public repository and retained only in the private collaboration repository pending written redistribution permission. Users may build a local object from independently obtained compatible representations and outcomes. None of the fitted objects is externally validated or intended for clinical use."),
+    ("Availability of data and materials", f"We used the official TITAN TCGA feature artifact, official Giga-SSL TCGA embeddings and the seandavis/tcga_provgigapath_embeddings Hugging Face dataset. The companion repository provides conversion code, source locations, access conditions, checksums and complete-resolution result companions [30]. Selected model-level CSV results are supplied with this submission as Additional file 4. We do not redistribute controlled-access whole-slide images. No persistent DOI has been assigned at the authors' request. PathoFMPred source code is released under the MIT licence, but its public repository contains no fitted model objects or default model-download URL. Users with appropriate rights may build a local object from independently obtained compatible representations and outcomes or explicitly provide an authorized collection and checksum. TITAN-derived fitted objects remain outside the public repository pending written redistribution permission. No fitted object is externally validated or intended for clinical use."),
     ("Competing interests", "The authors declare that they have no competing interests."),
     ("Funding", "No specific grant was received from any funding agency in the public, commercial or not-for-profit sectors."),
     ("Authors’ contributions", credit_statement),
@@ -2809,12 +2831,15 @@ doc.add_paragraph(
     "of the synchronized machine-readable result companions."
 )
 doc.add_paragraph(
-    "Additional file 2: Additional_file_2_COAD_example_A_PathoFMPred_report.pdf. COAD example A (TCGA-AA-A01F) complete PathoFMPred research-software output using TITAN, Giga-SSL and Prov-GigaPath features. "
+    "Additional file 2: Additional_file_2_COAD_example_A_PathoFMPred_report.pdf. COAD example A (TCGA-AA-A01F) PathoFMPred research-software output using TITAN, Giga-SSL and Prov-GigaPath features. "
     "The report lists every continuous and binary fitted model returned for each representation, with original predictions, class calls, internal TCGA reference ranks and model-performance metadata. It is a post hoc software illustration and is neither probability-calibrated nor externally validated."
 )
 doc.add_paragraph(
-    "Additional file 3: Additional_file_3_COAD_example_B_PathoFMPred_report.pdf. COAD example B (TCGA-A6-A56B) complete PathoFMPred research-software output using TITAN, Giga-SSL and Prov-GigaPath features. "
+    "Additional file 3: Additional_file_3_COAD_example_B_PathoFMPred_report.pdf. COAD example B (TCGA-A6-A56B) PathoFMPred research-software output using TITAN, Giga-SSL and Prov-GigaPath features. "
     "The report lists every continuous and binary fitted model returned for each representation, with original predictions, class calls, internal TCGA reference ranks and model-performance metadata. It is a post hoc software illustration and is neither probability-calibrated nor externally validated."
+)
+doc.add_paragraph(
+    "Additional file 4: Additional_file_4_machine_readable_results.zip. Contains the selected matched-atlas, provenance, robustness, endpoint-dictionary and COAD-example CSV companions listed in its README. The full analysis repository contains the remaining task-level records; Additional file 4 contains no fitted models or patient-level embeddings."
 )
 
 doc.add_heading("References", level=1)
@@ -2947,37 +2972,29 @@ matched_direct_genomic_n = ival(
 
 _replace_labelled(
     doc, "Background.",
-    " Haematoxylin-and-eosin (H&E) sections reflect tumour genotype and tissue context. We compared three released pathology representations to identify cancer-specific mutation, fusion, genomic-instability, pathway and derived immune signals."
+    " Haematoxylin-and-eosin (H&E) slides can reveal tumour genetics and tissue context, but it remains unclear which features can be estimated consistently from different pathology foundation-model representations. We compared slide representations from TITAN, Giga-SSL and Prov-GigaPath across cancer-specific genomic and computationally derived phenotypes."
 )
 _replace_labelled(
     doc, "Methods.",
-    f" {foundation_common_n:,} patients and 3,389 cancer-endpoint tasks across 30 The Cancer Genome Atlas (TCGA) cancers were analysed. Slides were mean-pooled within patients; TITAN, Giga-SSL and Prov-GigaPath were compared on matched outcomes and nested patient-level folds using 1 to 20 component partial least-squares (PLS) regression or PLS with linear discriminant analysis. Primary metrics were cross-validated Q² and area under the receiver operating characteristic curve (AUROC), with descriptive thresholds of 0.20 and 0.60. Alternative partitions and TCGA tissue-source-site-code grouping were examined. Permutation testing and false-discovery-rate control were applied to a larger {n_patients:,}-patient TITAN screen. TCGA images were used during Giga-SSL development, unlike the reported TITAN and Prov-GigaPath pretraining corpora."
+    f" We analysed {foundation_common_n:,} patients across 30 cancer types in The Cancer Genome Atlas (TCGA). TITAN, Giga-SSL and Prov-GigaPath embeddings were compared for 3,389 cancer-endpoint pairs using patient-level slide pooling, matched nested cross-validation and partial least-squares regression or classification. Continuous and binary outcomes were assessed by held-out Q² and area under the receiver operating characteristic curve (AUROC), respectively. We examined alternative validation partitions and grouping by TCGA tissue-source-site code. A larger TITAN screen underwent permutation testing and false-discovery-rate control. Giga-SSL development used TCGA images, so exposure to evaluation slides cannot be excluded."
 )
 _replace_labelled(
     doc, "Results.",
-    f" Excluding {matched_same_histology_n} same-H&E tasks, TITAN, Giga-SSL and Prov-GigaPath crossed the Q² threshold in "
-    f"{ival(foundation_same_histology_by_model['TITAN']['cross_modal_continuous_crossings'])}, "
-    f"{ival(foundation_same_histology_by_model['GigaSSL']['cross_modal_continuous_crossings'])} and "
-    f"{ival(foundation_same_histology_by_model['ProvGigaPath']['cross_modal_continuous_crossings'])} of "
-    f"{matched_crossmodal_continuous_n:,} cross-modal continuous tasks. They crossed the AUROC threshold in "
-    f"{foundation_crossings('TITAN', 'binary')}, {foundation_crossings('GigaSSL', 'binary')} and "
-    f"{foundation_crossings('ProvGigaPath', 'binary')} of {matched_binary_n} binary tasks, including "
-    f"{ival(foundation_provenance_by_key[('TITAN', 'binary', 'directly observed genomic alteration')]['effect_threshold_crossings'])}, "
-    f"{ival(foundation_provenance_by_key[('GigaSSL', 'binary', 'directly observed genomic alteration')]['effect_threshold_crossings'])} and "
-    f"{ival(foundation_provenance_by_key[('ProvGigaPath', 'binary', 'directly observed genomic alteration')]['effect_threshold_crossings'])} "
-    f"of {matched_direct_genomic_n} directly observed genomic-alteration tasks. Consensus signals included THYM-GTF2I mutation "
-    f"(AUROC {matched_metric_triplet('binary', 'THYM', 'driver_mutation', 'GTF2I', 'auc')}), "
-    f"strict COAD microsatellite instability ({matched_metric_triplet('binary', 'COAD', 'microsatellite_instability_sensitivity', 'MSI-H strict (MANTIS >0.6)', 'auc')}), "
-    f"UCEC fusion status ({matched_metric_triplet('binary', 'UCEC', 'fusion', 'Any called fusion', 'auc')}), "
-    f"the published TGCT TGF-beta Response signature (Q² {matched_metric_triplet('continuous', 'TGCT', 'thorsson', 'TGF-beta Response', 'q2')}) "
-    f"and TGCT Hallmark TGF-beta signaling ({matched_metric_triplet('continuous', 'TGCT', 'rna_pathway_activity', 'HALLMARK_TGF_BETA_SIGNALING', 'q2')}), "
-    f"ordered as TITAN, Giga-SSL and Prov-GigaPath. No pipeline led every endpoint. In the supporting TITAN screen, grouping by tissue-source-site code moved "
-    f"{ival(site_combined.get('below_threshold_models'))} of {ival(site_combined.get('screen_positive_models'))} candidates below their original threshold "
-    "and reduced COAD-APC and READ-APC performance towards chance."
+    f" After excluding {matched_same_histology_n} cancer-endpoint pairs whose reference values were derived from H&E, Q² reached the descriptive threshold of 0.20 for "
+    f"{ival(foundation_same_histology_by_model['TITAN']['cross_modal_continuous_crossings'])}/{matched_crossmodal_continuous_n:,} TITAN, "
+    f"{ival(foundation_same_histology_by_model['GigaSSL']['cross_modal_continuous_crossings'])}/{matched_crossmodal_continuous_n:,} Giga-SSL and "
+    f"{ival(foundation_same_histology_by_model['ProvGigaPath']['cross_modal_continuous_crossings'])}/{matched_crossmodal_continuous_n:,} Prov-GigaPath continuous pairs. "
+    f"AUROC reached 0.60 for {foundation_crossings('TITAN', 'binary')}/{matched_binary_n}, "
+    f"{foundation_crossings('GigaSSL', 'binary')}/{matched_binary_n} and {foundation_crossings('ProvGigaPath', 'binary')}/{matched_binary_n} binary pairs, respectively. "
+    f"Examples shared by all three representations included GTF2I mutation in thymoma (AUROC {matched_metric_range('binary', 'THYM', 'driver_mutation', 'GTF2I', 'auc')} across models), "
+    f"strict microsatellite instability in colon cancer (AUROC {matched_metric_range('binary', 'COAD', 'microsatellite_instability_sensitivity', 'MSI-H strict (MANTIS >0.6)', 'auc')}) "
+    f"and the RNA-derived TGF-beta response signature in testicular germ-cell tumours (Q² {matched_metric_range('continuous', 'TGCT', 'thorsson', 'TGF-beta Response', 'q2')}). "
+    f"In the supporting TITAN screen, grouping by tissue-source-site code moved "
+    f"{ival(site_combined.get('below_threshold_models'))}/{ival(site_combined.get('screen_positive_models'))} permutation/FDR-selected candidates below their original effect threshold."
 )
 _replace_labelled(
     doc, "Conclusions.",
-    " Histology contained reproducible cross-pipeline signals for mutations, fusions, microsatellite instability, genomic context and derived inflammatory phenotypes. TITAN provided the broadest task-level coverage under this probe, while some endpoints favoured another representation. The atlas and PathoFMPred prioritize candidates for independent validation, but internal TCGA estimates and cohort-structure sensitivity preclude clinical use."
+    " Histology captured several cancer-specific genetic and derived tissue programmes, but performance depended on the representation and validation partition. The atlas and PathoFMPred can help prioritize research models for independent testing. All performance estimates remain internal to TCGA and do not support clinical use."
 )
 _remove_paragraph_prefix(doc, "Binary estimand sensitivity.")
 _remove_paragraph_prefix(doc, "Sample-size strata.")
@@ -2999,7 +3016,7 @@ def _methods_study_design():
         "Within each representation, eligible primary-tumour diagnostic slides were pooled by arithmetic mean before outcomes were joined. The patient, rather than the slide, was treated as the unit of analysis and cross-validation. Each patient with multiple slides was represented as one observation, and all slides from that patient were kept in the same fold."
     )
     doc.add_paragraph(
-        f"No structured field for tumour cellularity, tissue area, artefact, biopsy/resection status or slide quality was provided by the available data. Generated TITAN slide narratives were used only for a non-adjudicated sensitivity audit. In the audit, 35 no-residual-tumour mentions were identified across six patients: TCGA-B6-A0IA and TCGA-B6-A0WV in BRCA, TCGA-55-8203 and TCGA-55-8507 in LUAD, TCGA-22-4596 in LUSC and TCGA-DX-AB2L in SARC. These patients were retained in the primary analysis because the generated narratives were derived from the same slides and did not constitute independent pathology review. In a post hoc sensitivity analysis, all six patients were removed before fold construction, and all {no_residual_sensitivity_total} screen-positive models in the four affected cancers were refitted using the documented nested-validation rules. A separate maximum-slide-count sensitivity was also conducted for TCGA-DX-AB2L, the participant represented by 30 SARC slides, by removal of this patient before fold construction and refitting of every SARC candidate. Molecular sources were linked at participant or 15-character sample-barcode level; identity of the tissue block, aliquot or tumour region is not proved by either linkage. Complete exclusion results and the full linkage, pathology-quality and pooling audits are reported in Supplementary Table S3."
+        f"Generated TITAN slide narratives were used only for a non-adjudicated sensitivity audit. In the audit, 35 no-residual-tumour mentions were identified across six patients: TCGA-B6-A0IA and TCGA-B6-A0WV in BRCA, TCGA-55-8203 and TCGA-55-8507 in LUAD, TCGA-22-4596 in LUSC and TCGA-DX-AB2L in SARC. These patients were retained in the primary analysis because the generated narratives were derived from the same slides and did not constitute independent pathology review. In a post hoc sensitivity analysis, all six patients were removed before fold construction, and all {no_residual_sensitivity_total} screen-positive models in the four affected cancers were refitted using the documented nested-validation rules. A separate maximum-slide-count sensitivity was also conducted for TCGA-DX-AB2L, the participant represented by 30 SARC slides, by removal of this patient before fold construction and refitting of every SARC candidate. Molecular sources were linked at participant or 15-character sample-barcode level; identity of the tissue block, aliquot or tumour region is not proved by either linkage. Complete exclusion results and the full linkage, pathology-quality and pooling audits are reported in Supplementary Table S3."
     )
 
 
@@ -3008,13 +3025,13 @@ _replace_block(doc, "Study design, slides and patient unit", "Predictors and out
 
 def _methods_predictors():
     doc.add_paragraph(
-        "Slide vectors of 768 dimensions were supplied by TITAN and Prov-GigaPath, while 512-dimensional vectors were supplied by Giga-SSL. Five pragmatic inclusion criteria were applied. A ready-to-use slide-level TCGA embedding artifact had to be provided without downloading or reprocessing WSI pixels; deterministic slide identifiers linkable to patient and cancer had to be retained; one fixed-length whole-slide vector had to be provided; the 32-cancer frame had to be covered sufficiently for a common-patient analysis; and reproducible release metadata had to be provided for a materially distinct published whole-slide representation strategy. All five criteria were met by TITAN, Giga-SSL and Prov-GigaPath. Representative alternatives excluded because a compatible slide-level TCGA artifact, identifiers or common-cohort coverage were unavailable are listed in the supplementary inclusion audit; exclusion was not treated as a model-quality judgement. Upstream preprocessing, spatial resolution, training exposure and released layers were not harmonised. The estimand was therefore defined as complete released representation-pipeline performance under the common probe rather than intrinsic foundation-model quality. Because TCGA was used during Giga-SSL development, molecular labels were held out downstream although representation learning may have included the evaluated images."
+        "Slide vectors of 768 dimensions were supplied by TITAN and Prov-GigaPath, while 512-dimensional vectors were supplied by Giga-SSL. Five pragmatic inclusion criteria were applied. A ready-to-use slide-level TCGA embedding artifact had to be provided without downloading or reprocessing WSI pixels; deterministic slide identifiers linkable to patient and cancer had to be retained; one fixed-length whole-slide vector had to be provided; the 32-cancer frame had to be covered sufficiently for a common-patient analysis; and reproducible release metadata had to be provided for a materially distinct published whole-slide representation strategy. All five criteria were met by TITAN, Giga-SSL and Prov-GigaPath. Representative alternatives excluded because a compatible slide-level TCGA artifact, identifiers or common-cohort coverage were unavailable are listed in the supplementary inclusion audit; exclusion was not treated as a model-quality judgement. Upstream preprocessing, spatial resolution, training exposure and released layers were not harmonised. The released slide representations were therefore compared under a common probe, including differences in how each was produced, rather than as isolated tests of intrinsic foundation-model quality. Because TCGA was used during Giga-SSL development, molecular labels were held out downstream although representation learning may have included the evaluated images."
     )
     doc.add_paragraph(
-        "Outcome labels were acquired from published TCGA companion resources and were joined by the 12-character participant barcode after representation-specific patient vectors had been constructed. Where a 15-character TCGA sample barcode was supplied by a source, primary-tumour sample type 01 was first retained and eligible molecular rows were then collapsed to one participant-level outcome. Only a participant identifier was supplied by Thorsson. Source-specific and endpoint-specific missingness was retained. A participant absent from a molecular source was not assigned to the negative class. The same TCGA primary-tumour specimen is indicated by an exact 15-character sample match, but use of the same block, portion, analyte, aliquot, tumour region or subclone by the WSI and molecular assay is not proved. The source file, sheet, identifier, filtering, aggregation, missingness and transformation for every outcome group are reported in the supplementary endpoint dictionary and the machine-readable outcome_source_acquisition_map.csv."
+        "Outcome labels were acquired from published TCGA companion resources and were joined by the 12-character participant barcode after representation-specific patient vectors had been constructed. Where a 15-character TCGA sample barcode was supplied by a source, primary-tumour sample type 01 was first retained and eligible molecular rows were then collapsed to one participant-level outcome. The PanImmune workbook published by Thorsson et al. supplied only participant identifiers. Source-specific and endpoint-specific missingness was retained. A participant absent from a molecular source was not assigned to the negative class. An exact 15-character sample match indicates the same TCGA sample barcode but does not prove that the WSI and assay used the same block, portion, analyte, aliquot, tumour region or subclone. The source file, sheet, identifier, filtering, aggregation, missingness and transformation for every outcome group are reported in the supplementary endpoint dictionary and the machine-readable outcome-source map in Additional file 4."
     )
     doc.add_paragraph(
-        "Immune, inflammatory and genomic-context features were obtained from the PanImmune_MS sheet of the Thorsson et al. supplementary workbook [19]. Fifty published non-survival, non-subtype and non-aggregate fields were selected, and their published participant-level values were imported rather than recalculated. These comprised 22 relative immune-cell fractions inferred from bulk RNA sequencing by CIBERSORT with the LM22 reference [37]; one methylation-derived leukocyte fraction; ten bulk-RNA expression signatures, including IFN-gamma response, TGF-beta response, wound healing, macrophage regulation, lymphocyte infiltration and Th1, Th2 and Th17 programmes; six BCR/TCR repertoire metrics; two somatic mutation rates; two in-silico neoantigen burdens; six genomic-context quantities; and the Saltz H&E-derived TIL Regional Fraction [38]. Endpoint-specific missing values were retained. The log1p transformation was applied only to silent and nonsilent mutation rates, SNV and indel neoantigen counts and number of segments; every other Thorsson value was used on its published scale. CIBERSORT fractions and inflammatory signatures were therefore interpreted as agreement with published computational reference phenotypes, not as measurements generated directly from the tissue."
+        "Immune, inflammatory and genomic-context features were obtained from the PanImmune_MS sheet published by Thorsson et al. [19]. Fifty published non-survival, non-subtype and non-aggregate fields were selected; their participant-level values were imported rather than recalculated. They included 22 CIBERSORT LM22 fractions inferred from bulk RNA sequencing [37], a methylation-derived leukocyte fraction, ten bulk-RNA immune and inflammatory signatures, six BCR/TCR repertoire quantities, two somatic mutation rates, two in-silico neoantigen burdens, six genomic-context quantities and the Saltz H&E-derived TIL Regional Fraction [38]. Endpoint-specific missing values were retained. Silent and nonsilent mutation rates, SNV and indel neoantigen counts and number of segments were analysed after log1p transformation; other PanImmune values kept their published scale. The PanImmune field named 'Aneuploidy Score' and the Taylor et al. arm-level burden named 'Aneuploidy score' were retained as separate outcomes with separate source labels in the case reports. CIBERSORT fractions and inflammatory signatures were interpreted as agreement with computational reference phenotypes, not direct tissue measurements."
     )
     doc.add_paragraph(
         "RNA pathway-activity outcomes were constructed from the batch-adjusted TCGA Pan-Cancer RNA-sequencing matrix downloaded from UCSC Xena [44] and the MSigDB 2026.1.Hs gene-set release [45]. Fifty Hallmark gene sets, the Reactome glutathione synthesis and recycling set and the Gene Ontology vitamin B6 metabolic-process set were used. Primary-tumour sample type 01 was retained, expression was averaged across multiple primary-tumour aliquots from the same participant, and genes were standardized within each cancer. Each pathway score was calculated as the mean standardized expression of its measured member genes. The scores are therefore RNA-derived computational reference phenotypes and not direct biochemical measurements of pathway flux, glutathione concentration or pyridoxine metabolism. Source URLs, checksums, gene-set membership and per-cancer measured-gene counts are reported in the supplementary source audit."
@@ -3035,7 +3052,7 @@ def _methods_models():
         "Each eligible cancer-endpoint pair was analysed as a separate cancer-specific task. In the matched benchmark, TITAN, Giga-SSL and Prov-GigaPath models were fitted independently while the same patients and validation folds were used. Features were centred within training folds by nested patient-level five-fold cross-validation, and 1 to 20 latent components were selected from pooled inner held-out predictions, with ties resolved in favour of fewer components. For continuous outcomes, PLS regression was fitted, inner root-mean-square deviation was minimised, and outer-fold Q², the cross-validated coefficient of determination, RMSE and Spearman correlation were evaluated. For binary outcomes, PLS-LDA was fitted, and the component count was selected by pooled inner out-of-fold (OOF) AUROC. The balanced-accuracy-maximising threshold from those inner training predictions was applied unchanged to the outer test fold. Outer OOF AUROC was evaluated as the primary paired statistic; PR-AUC, balanced accuracy, sensitivity, specificity, PPV and NPV were also reported. The observed outcome prevalence was used as the no-skill reference for PR-AUC. The discriminant score was uncalibrated and was not presented as a probability. At least 20 patients per class were required for binary eligibility, and at least 50 labelled patients were required for continuous eligibility."
     )
     doc.add_paragraph(
-        f"Seeded rSVD was used for every decomposition with the fastPLS 0.3 defaults. In the matched benchmark, identical outcome-labelled patients, folds, seeds and tuning rules were applied to all three representations. A descriptive effect-threshold crossing was defined as Q²≥0.20 for a continuous task or AUROC≥0.60 for a binary task. No representation-specific permutation or multiplicity procedure was applied in the matched benchmark, so effect-threshold crossings were treated as catalogue-navigation summaries rather than inferential discoveries. For all {matched_binary_n} matched binary pairs, the training-only optimized call was compared with empirical-prior and equal-prior calls on the identical AUROC-selected outer scores. Paired changes in balanced accuracy, sensitivity, specificity, PPV and NPV were reported. Symmetric folds and tuning objectives were used in the fixed {sum(ival(r['targets']) for r in probe_by_type.values())}-target ridge comparison, which was not treated as a second atlas."
+        f"Seeded rSVD was used for every decomposition with the fastPLS 0.3 defaults. In the matched benchmark, identical outcome-labelled patients, folds, seeds and tuning rules were applied to all three representations. A descriptive effect-threshold crossing was defined as Q²≥0.20 for a continuous task or AUROC≥0.60 for a binary task. These round, deliberately modest cutoffs were used to prioritise associations for follow-up within a large, heterogeneous catalogue, not to define clinical utility. Under the Q² definition used here, 0.20 corresponds to at least 20% less out-of-fold squared prediction error than a constant reference set to the observed outcome mean. An AUROC of 0.60 lies 0.10 above chance (0.50) on the case-control ranking scale. The two cutoffs do not represent equivalent biological or clinical effects. Their influence was assessed across Q² thresholds of 0.10 to 0.30 and AUROC thresholds of 0.55 to 0.65; unthresholded estimates were retained for every eligible task. No representation-specific permutation or multiplicity procedure was applied in the matched benchmark, so effect-threshold crossings were treated as catalogue-navigation summaries rather than inferential discoveries. For all {matched_binary_n} matched binary pairs, the training-only optimized call was compared with empirical-prior and equal-prior calls on the identical AUROC-selected outer scores. Paired changes in balanced accuracy, sensitivity, specificity, PPV and NPV were reported. Symmetric folds and tuning objectives were used in the fixed {sum(ival(r['targets']) for r in probe_by_type.values())}-target ridge comparison, which was not treated as a second atlas."
     )
 
 
@@ -3053,7 +3070,7 @@ def _methods_robustness():
         f"A total of 3,633 eligible pairs, comprising 3,174 continuous and 459 binary pairs, were evaluated in the supporting TITAN-only screen. Models below the effect checkpoint were assigned p=1 without permutation, while tests stopped after significance became impossible were assigned a distinct early-stopped p=1 status. Scaling, inner component selection, refitting and held-out prediction were repeated for every performed permutation. Up to 999 permutations were used in the primary audit, and eight separately locked leading targets were extended to 9,999 complete-process permutations with Monte Carlo intervals. Benjamini-Hochberg correction was applied within cancer and endpoint family; the q-value was defined as the false-discovery-rate-adjusted empirical p-value. Broader multiplicity sensitivities were reported separately. The {titan_candidate_total} qualified candidates were subjected to five additional nested partitions and grouping by TCGA tissue-source-site code. For highlighted candidates, patients from five fixed held-out prediction sets were resampled in the 95% selection-conditioned (SC) patient-resampling interval for repeated OOF predictions, and each metric was recalculated without folds being regenerated and without retuning or refitting. Patient sampling variation conditional on those fitted partitions is represented by the interval; it is not a confidence interval for external generalisation, and winner's-curse selection is not corrected. Complete permutation, Monte Carlo, uncertainty, fold-adequacy, class-size, continuous-reliability and multiple-slide details are reported in the Supplementary Methods and machine-readable audit files."
     )
     doc.add_paragraph(
-        "Model coefficients, representation schema, outcome definition and internal-performance metadata are carried by PathoFMPred, but no validation evidence is created. Contributor-authored package source code and documentation are released under the MIT License. Permitted Giga-SSL and Prov-GigaPath fitted collections are provided as explicit, checksum-verified post-install downloads with separate asset notices and upstream attribution. TITAN-derived fitted parameters are excluded from the public repository because the upstream terms require permission for redistribution. Authorized users can construct and apply a local object with generic package functions. No independent cohort was evaluated."
+        "PathoFMPred records model coefficients, representation schemas, outcome definitions and internal-performance metadata, but using the package does not create validation evidence. Its contributor-authored source code and documentation are released under the MIT License. The public package contains no fitted model collections and provides no default model-download URL. A user with appropriate rights can supply an independently obtained collection and its checksum, or build a local object from compatible features and outcomes. TITAN-derived parameters remain outside the public repository pending written redistribution permission. No independent cohort was evaluated."
     )
 
 
@@ -3094,12 +3111,12 @@ def _compact_results():
         for cell in pathology_table.rows[0].cells:
             shade(cell, "D9EAF7")
 
-    doc.add_heading("Matched cohort and pipeline scope", level=2)
+    doc.add_heading("Matched cohort and slide representations", level=2)
     doc.add_paragraph(
-        f"We included {foundation_common_n:,} patients and {len(foundation_target_comparison):,} cancer–endpoint pairs shared across TITAN, Giga-SSL and Prov-GigaPath in the primary benchmark. These comprised {matched_continuous_n:,} continuous and {matched_binary_n:,} binary pairs across {matched_cancer_n} cancers. We used identical patients, outcomes, folds, seeds and tuning rules within each pair. Of the {ival(foundation_slide_audit.get('common_patients')):,} patients in this matched cohort, {ival(foundation_slide_audit.get('identical_slide_set_patients')):,} ({100 * ival(foundation_slide_audit.get('identical_slide_set_patients')) / ival(foundation_slide_audit.get('common_patients')):.1f}%) had exactly the same TCGA slide identifiers available in all three embedding datasets. At least one dataset lacked one or more otherwise eligible slides for the remaining {ival(foundation_slide_audit.get('common_patients')) - ival(foundation_slide_audit.get('identical_slide_set_patients')):,} patients. Restricting every pipeline to the {ival(foundation_slide_audit.get('exact_common_slides')):,} slides available in all three datasets left median performance changes near zero, although individual small ACC tasks changed more substantially. The comparison nevertheless includes each pipeline's upstream preprocessing, resolution, representation-learning exposure and released layer."
+        f"We included {foundation_common_n:,} patients and {len(foundation_target_comparison):,} cancer–endpoint pairs shared across TITAN, Giga-SSL and Prov-GigaPath in the primary benchmark. These comprised {matched_continuous_n:,} continuous and {matched_binary_n:,} binary pairs across {matched_cancer_n} cancers. We used identical patients, outcomes, folds, seeds and tuning rules within each pair. Of the {ival(foundation_slide_audit.get('common_patients')):,} patients in this matched cohort, {ival(foundation_slide_audit.get('identical_slide_set_patients')):,} ({100 * ival(foundation_slide_audit.get('identical_slide_set_patients')) / ival(foundation_slide_audit.get('common_patients')):.1f}%) had exactly the same TCGA slide identifiers available in all three embedding datasets. At least one dataset lacked one or more otherwise eligible slides for the remaining {ival(foundation_slide_audit.get('common_patients')) - ival(foundation_slide_audit.get('identical_slide_set_patients')):,} patients. Restricting every slide representation to the {ival(foundation_slide_audit.get('exact_common_slides')):,} slides available in all three datasets left median performance changes near zero, although individual small ACC tasks changed more substantially. The comparison nevertheless includes differences in upstream preprocessing, resolution, representation-learning exposure and released layer."
     )
     doc.add_paragraph(
-        "We analysed 768-dimensional TITAN, 512-dimensional Giga-SSL and 768-dimensional Prov-GigaPath whole-slide vectors. TITAN combined a CONCH v1.5 tile encoder with its region-of-interest workflow and released slide layer. Giga-SSL combined a ResNet-18 tile encoder with a sparse-convolutional slide encoder, while Prov-GigaPath combined a DINOv2-style tile encoder with its final long-context slide layer. The reported TITAN Mass-340K and Prov-GigaPath Providence pretraining corpora excluded TCGA. Giga-SSL development used TCGA, so direct exposure to evaluated slides cannot be excluded. All three downstream analyses withheld molecular labels. We therefore interpret every comparison as a result for the complete released representation pipeline rather than an image-unseen test of isolated foundation-model quality."
+        "We analysed 768-dimensional TITAN, 512-dimensional Giga-SSL and 768-dimensional Prov-GigaPath whole-slide vectors. TITAN combined a CONCH v1.5 tile encoder with its region-of-interest workflow and released slide layer. Giga-SSL combined a ResNet-18 tile encoder with a sparse-convolutional slide encoder, while Prov-GigaPath combined a DINOv2-style tile encoder with its final long-context slide layer. The reported TITAN Mass-340K and Prov-GigaPath Providence pretraining corpora excluded TCGA. Giga-SSL development used TCGA, so direct exposure to evaluated slides cannot be excluded. All three downstream analyses withheld molecular labels. We therefore interpret every comparison as a result for the released slide representations and the processes used to produce them, not an image-unseen test of isolated foundation-model quality."
     )
     doc.add_paragraph(
         f"Pathology and molecular linkage limited interpretation. In the non-adjudicated pathology-text exclusion sensitivity defined in Methods, the original threshold remained for {no_residual_threshold_retained_total}/{no_residual_sensitivity_total} models. This sensitivity does not replace independent pathology review."
@@ -3169,14 +3186,14 @@ def _compact_results():
     )
     doc.add_paragraph(
         "The continuous results linked histology to selected inflammatory and tissue-context programmes rather than to every tested immune feature. "
-        f"Signals crossing in all three representations included {'; '.join(continuous_shared_examples)}, with values ordered as TITAN, Giga-SSL and Prov-GigaPath. "
+        f"For example, signals crossing in all three representations included {'; '.join(continuous_shared_examples)}; each range spans the three representations. "
         "We treated these as agreement with bulk-transcriptomic, methylation-derived, repertoire or composite reference phenotypes rather than direct recovery of immune-cell abundance. "
         f"The same-H&E TIL Regional Fraction contributed {matched_same_he_n} eligible tasks, which we excluded from the default cross-modal summary. "
         "Supplementary Table S5 reports selected continuous results, Supplementary Table S6 summarizes predictability by feature family, and Supplementary Table S7 provides the literature context for each tumour-feature class."
     )
     add_figure(
         doc, "Figure2_biological_predictability_map.png",
-        "Figure 2. Tumour-feature classes and selected cancer-specific examples under the three released pathology representation pipelines. Panel A reports the percentage of eligible cancer-endpoint pairs reaching Q² at least 0.20 or AUROC at least 0.60 in at least one representation and in all three representations, after excluding the 11 same-H&E TIL-fraction tasks. Panel B shows selected direct genomic and genomic-context examples. Panel C shows selected immune, inflammatory and tissue-context reference phenotypes. Every displayed example crossed in all three representations and retained the threshold after tissue-source-site-code grouping. Blue, orange and green points represent TITAN, Giga-SSL and Prov-GigaPath, respectively. The coloured right-hand label identifies the pipeline with the highest observed effect for that pair; exact estimates are provided in the accompanying data table. The complete atlas reports every tested pair. Grouped retention is an internal cohort-structure sensitivity, not external validation.",
+        "Figure 2. Tumour-feature classes and selected cancer-specific examples. Panel A shows eligible pairs crossing Q²≥0.20 or AUROC≥0.60 in at least one or all three representations; 11 same-H&E TIL-fraction tasks were excluded. Panels B and C show selected genomic and derived tissue-context outcomes that crossed in all three and retained the threshold after TCGA tissue-source-site-code grouping. Blue, orange and green denote TITAN, Giga-SSL and Prov-GigaPath; right-hand labels name the highest observed effect. Grouped retention is an internal sensitivity, not external validation.",
         width=6.35,
     )
     doc.add_paragraph(
@@ -3289,21 +3306,20 @@ def _compact_results():
         doc, "Figure3_COAD_PathoFMPred_multifoundation_examples.png",
         "Figure 5. Post hoc PathoFMPred research-software illustration for TCGA-AA-A01F and TCGA-A6-A56B using TITAN, Giga-SSL and Prov-GigaPath inputs. Each panel includes only continuous endpoints meeting the recorded predictability rule for that cancer and representation: "
         f"{coad_returned_endpoints('TITAN', 'continuous')} for TITAN, {coad_returned_endpoints('GigaSSL', 'continuous')} for Giga-SSL and {coad_returned_endpoints('ProvGigaPath', 'continuous')} for Prov-GigaPath. "
-        "Corner labels give original predictions in source units. Radius gives the internal TCGA out-of-fold reference percentile, not a probability or clinical reference interval. The examples do not evaluate calibration, treatment response, external validation or clinical utility.",
+        "Corner labels give original predictions in source units. In the aneuploidy labels, P denotes the PanImmune field published by Thorsson et al. and T the Taylor et al. arm-level score. Radius gives an internal TCGA reference percentile, not a probability or clinical interval. These cases do not evaluate accuracy or clinical utility.",
         width=6.35,
     )
     add_figure(
         doc, "Figure6_COAD_PathoFMPred_full_binary_output.png",
-        "Figure 6. Complete predictable binary PathoFMPred output for the same two COAD examples using TITAN, Giga-SSL and Prov-GigaPath. The figure includes every binary endpoint returned for at least one representation. "
-        f"TITAN returned {coad_returned_endpoints('TITAN', 'binary')} endpoints, Giga-SSL returned {coad_returned_endpoints('GigaSSL', 'binary')} and Prov-GigaPath returned {coad_returned_endpoints('ProvGigaPath', 'binary')}. "
-        "Grey cells indicate that a representation did not return an eligible threshold-crossing fitted object. Each populated cell reports the direct class call, original uncalibrated LDA score and internal TCGA reference-score rank. Reference rank, not probability: raw LDA scores and ranks cannot be interpreted as calibrated probabilities or compared across models.",
+        "Figure 6. All binary outputs returned for the two COAD examples by TITAN, Giga-SSL and Prov-GigaPath. Grey means no eligible threshold-crossing model. Each cell gives the class call and uncalibrated LDA score. Reference rank, not probability, is shown beside each call. Some case labels contributed to final model fitting; these examples are not held-out tests.",
         width=6.35,
     )
     doc.add_paragraph(
         "Figure 6 shows every returned binary endpoint rather than a selected mutation subset. "
+        f"TITAN returned {coad_returned_endpoints('TITAN', 'binary')}, Giga-SSL returned {coad_returned_endpoints('GigaSSL', 'binary')} and Prov-GigaPath returned {coad_returned_endpoints('ProvGigaPath', 'binary')} binary endpoints. "
         f"For TCGA-AA-A01F, APC mutation calls were {coad_binary_call('TCGA-AA-A01F', 'TITAN', 'driver_mutation', 'APC')}, {coad_binary_call('TCGA-AA-A01F', 'GigaSSL', 'driver_mutation', 'APC')} and {coad_binary_call('TCGA-AA-A01F', 'ProvGigaPath', 'driver_mutation', 'APC')} for TITAN, Giga-SSL and Prov-GigaPath, respectively; KRAS calls were {coad_binary_call('TCGA-AA-A01F', 'TITAN', 'driver_mutation', 'KRAS')}, {coad_binary_call('TCGA-AA-A01F', 'GigaSSL', 'driver_mutation', 'KRAS')} and {coad_binary_call('TCGA-AA-A01F', 'ProvGigaPath', 'driver_mutation', 'KRAS')}. "
         f"For TCGA-A6-A56B, APC calls were {coad_binary_call('TCGA-A6-A56B', 'TITAN', 'driver_mutation', 'APC')}, {coad_binary_call('TCGA-A6-A56B', 'GigaSSL', 'driver_mutation', 'APC')} and {coad_binary_call('TCGA-A6-A56B', 'ProvGigaPath', 'driver_mutation', 'APC')}; KRAS calls were {coad_binary_call('TCGA-A6-A56B', 'TITAN', 'driver_mutation', 'KRAS')}, {coad_binary_call('TCGA-A6-A56B', 'GigaSSL', 'driver_mutation', 'KRAS')} and {coad_binary_call('TCGA-A6-A56B', 'ProvGigaPath', 'driver_mutation', 'KRAS')}. "
-        "Together, Figures 5 and 6 show every continuous and binary model that PathoFMPred returned for these patients; exact calls, uncalibrated scores and reference ranks remain in Additional files 2 and 3. These software examples do not establish correctness, calibration, treatment response, external validity or clinical utility."
+        "Together, Figures 5 and 6 show every continuous and binary model that PathoFMPred returned for these patients. Additional files 2 and 3 provide the full reports, including original predictions, uncalibrated scores, reference ranks and source-label availability. Where a patient had an outcome label, that label contributed to fitting the final full-data object. These illustrations therefore do not test held-out accuracy, calibration, treatment response, external validity or clinical utility."
     )
 
 _replace_block(doc, "Results", "Discussion", _compact_results)
@@ -3435,7 +3451,7 @@ sup.styles["Caption"].paragraph_format.line_spacing = 1.0
 sup.styles["Caption"].paragraph_format.space_after = Pt(3)
 sup.add_heading("Supplementary material", 0)
 sup.add_paragraph(MANUSCRIPT_TITLE)
-sup.add_paragraph("This document is Additional file 1, supplementary_material_JTM.docx. Additional_file_2_COAD_example_A_PathoFMPred_report.pdf and Additional_file_3_COAD_example_B_PathoFMPred_report.pdf contain the separate COAD research-software examples.")
+sup.add_paragraph("This document is Additional file 1, supplementary_material_JTM.docx. Additional files 2 and 3 contain the separate COAD research-software examples. Additional file 4 supplies selected machine-readable result tables as a ZIP archive with a file inventory.")
 sup.add_heading("Contents", 1)
 sup.add_paragraph("The PDF retains interpretation-focused summaries. Complete target-level and per-model records reside in the synchronized CSV and RDS companions listed at the end. Word's Navigation pane links to every numbered heading.")
 for item in ("Supplementary Methods: outcome acquisition, validation, reliability, literature and endpoint provenance",
@@ -3447,14 +3463,14 @@ for item in ("Supplementary Methods: outcome acquisition, validation, reliabilit
     sup.add_paragraph(item, style="List Bullet")
 sup.add_heading("Supplementary Methods", 1)
 sup.add_paragraph("Reference numbers in this Supplement refer to the main-manuscript bibliography. The analysis used the established histology-prediction literature [1-16], PLS and discriminant-analysis methodology [17,18], published TCGA phenotype sources [19-26], false-discovery-rate and reporting guidance [27,28], the TCGA Clinical Data Resource [29], analysis and software repositories [30,32], global-incidence and GDC resources [31,33], targeted literature and planned external-cohort sources [34-36], immune-deconvolution and H&E TIL methods [37,38], the evaluated representation publications and released artifacts [39-42], DINOv2 as a general self-supervised vision example [43], UCSC Xena [44] and the MSigDB Hallmark collection [45].")
-sup.add_paragraph("The executable analysis plan, source manifest, eligibility catalogues, checkpoint-capable scripts and released out-of-fold prediction tables are available in the public GPL-3.0-or-later companion analysis repository. PathoFMPred contributor-authored source code and documentation are released under the MIT License. The public package contains a minimal Giga-SSL fixture and explicit, checksum-verified post-install download functions for the permitted Giga-SSL and Prov-GigaPath fitted collections. Those assets carry separate notices and upstream attribution. The TITAN fitted collection is excluded from the public repository because redistribution requires upstream permission; authorized users can construct and apply a local object with the generic builder and object-level prediction function. Large local restart checkpoints and patient-level source data are not redistributed. Tables below are concise views; synchronized machine-readable files provide the complete-resolution companion records.")
+sup.add_paragraph("The analysis plan, source manifest, eligibility catalogues and complete result tables are available in the public companion analysis repository. Selected CSV companions are also supplied with this submission as Additional file 4. PathoFMPred contributor-authored source code and documentation use the MIT License, but the public package contains no fitted model objects or default model-download URL. Users who have obtained a collection under its applicable terms can explicitly supply its location and checksum, or build a local object using the generic functions. TITAN-derived fitted parameters are not distributed publicly while written permission remains unresolved. Large local checkpoints, patient-level source data and fitted objects are not part of Additional file 4.")
 sup.add_paragraph("For the selected cancer and representation, PathoFMPred prediction, plotting and reporting include only fitted objects that met the recorded predictability rule. In the matched atlas this is Q² at least 0.20 for continuous endpoints or AUROC at least 0.60 for binary endpoints. TITAN objects outside the three-representation common cohort retain the supporting permutation/FDR-qualified TITAN status. Smaller-sample crossings require explicit opt-in, while tested-below-threshold objects never enter prediction or reports and remain visible only in the raw audit registry.")
 sup.add_paragraph("Terminology: predictability denotes held-out cross-validated statistical association under the specified model, folds, target definition and performance criterion. It does not denote causal biology, mechanistic interpretation, direct reconstruction of an assay, analytical or clinical equivalence, or permission to replace the originating measurement.")
 sup.add_paragraph("Metric definitions: Q² is the cross-validated coefficient of determination; a q-value is a false-discovery-rate-adjusted empirical p-value; out-of-fold (OOF) denotes predictions generated for patients excluded from model fitting; a selection-conditioned (SC) interval is the patient-resampling interval calculated from the five fixed repeated OOF prediction sets; and TCGA tissue-source-site code is the barcode-derived submitting-centre field used as an internal cohort-structure variable.")
 sup.add_paragraph("In the ridge sensitivities, cv.glmnet generated a common inner-fold coefficient path and held-out predictions. Its internal deviance summary was not used to select the penalty. The representative PLS-versus-ridge binary comparison selected each method's tuning value and operating threshold from pooled inner out-of-fold balanced accuracy. The separate representation-probe sensitivity selected the ridge penalty by pooled inner out-of-fold AUROC and derived the class threshold only from training data. This explicit selection avoided glmnet's automatic AUC-summary fallback when an inner fold contained fewer than ten observations; the same task-specific folds were used for the paired PLS and ridge comparison.")
 sup.add_paragraph("Representation-artifact audit: the downloaded Prov-GigaPath Parquet contained 1,406 excess rows across 1,402 duplicated slide identifiers. The repeated final-layer vectors were exactly identical. Conversion retained the first occurrence and removed all 1,406 exact duplicate Prov-GigaPath rows before slide filtering and patient pooling, so repeated source rows could not alter slide or patient weights. The source dataset card does not document why the duplicate rows were present.")
 sup.add_heading("Outcome acquisition, participant linkage and label construction", 2)
-sup.add_paragraph("The published supplementary workbooks or public TCGA PanCancer files identified below were downloaded, and values were imported with the source-specific rules implemented in R/02_build_nonmutation_targets.R and R/03_build_mutation_targets.R. Outcomes were joined after slide pooling. A 12-character TCGA participant barcode was used for every analysis row, and 15-character sample barcodes were retained when supplied by the source. Source absence was treated as missing rather than negative. The exception was a documented assayed denominator: MC3-profiled patients without a qualifying mutation and Gao study samples without a fusion call were assigned negative according to the rules below. Filenames, DOI identifiers and SHA-256 digests are recorded in the source manifest; cancer-specific denominators are reported in molecular_source_coverage_audit.csv and mutation_coverage_audit.csv.")
+sup.add_paragraph("Published supplementary workbooks and public TCGA PanCancer files supplied the outcome values. Outcomes were joined after slide pooling. A 12-character TCGA participant barcode identified each analysis row, and 15-character sample barcodes were retained where the source provided them. Absence from a source was treated as missing, not negative. Only within documented assayed denominators were MC3-profiled patients without a qualifying mutation and Gao study samples without a fusion call assigned negative. The source manifest records filenames, DOI identifiers and checksums; the companion data tables give cancer-specific denominators. Reproducible import code is available in the analysis repository.")
 for source_row in outcome_source_acquisition:
     add_labelled(
         sup,
@@ -3813,7 +3829,7 @@ add_table(
 )
 sup.add_paragraph("compare_pathofm_models() reports controlled-object availability, the object's target-selection basis and its representation-specific matched-threshold status in separate fields. It does not derive consensus from the number of stored objects and cannot list an atlas crossing for which no object exists; such tasks remain visible in the complete matched-atlas tables and fitted_model_inventory_reconciliation.csv.")
 sup.add_heading("Table S6e. Software access and licensing matrix", 1)
-sup.add_paragraph("This matrix records the authors' current release policy and is not a legal determination. Upstream terms remain authoritative and must be checked at the version used. The MIT licence on contributor-authored PathoFMPred source code does not relicense fitted objects, upstream representations or source datasets. The public package contains a minimal Giga-SSL fixture and checksum-verified, user-invoked downloads of the Giga-SSL and Prov-GigaPath fitted collections under separately stated asset terms and upstream attribution. The TITAN fitted collection remains available only in the private collaboration repository pending written redistribution permission.")
+sup.add_paragraph("This matrix records the authors' current release policy and is not a legal determination. Upstream terms remain authoritative and must be checked at the version used. The MIT licence on contributor-authored PathoFMPred source code does not relicense fitted objects, upstream representations or source datasets. The public package contains no fitted objects and no default model-download URL. Users may build an object locally from compatible representations and outcomes, or explicitly supply a collection obtained under its applicable terms and verify its checksum. TITAN-derived fitted objects remain outside the public repository pending written redistribution permission.")
 add_table(
     sup,
     ["Layer", "Licence or upstream terms", "Current access", "Reviewer access", "Reader access at publication", "Redistribution position"],
@@ -4832,7 +4848,7 @@ def _compact_supp_tables():
     add_table(sup, ["Representation", "Outcome", "Targets", "Median components", "Targets with any ceiling", "Outer fits at ceiling"],
               [[display_representation(r["foundation_model"]), r["outcome_type"], r["targets"], fnum(r["selected_components_median"],1), r["targets_with_any_outer_fit_at_ceiling"], f"{r.get('outer_fits_at_ceiling')}/{r.get('outer_fits_total')}"] for r in foundation_component_audit],
               [2.7, 2.0, 1.5, 2.5, 3.3, 3.0], font_size=7.0, header_font_size=7.2, line_spacing=1.0, fixed_layout=True)
-    sup.add_heading("Table S15e. Representation pipelines not included", 2)
+    sup.add_heading("Table S15e. Other foundation models not included", 2)
     add_table(sup, ["Model or family", "Representation level", "Reason not included", "Criterion not met"],
               [[r["model_or_family"], r["representation_level"], r["reason_not_included"], r["criterion_not_met"]] for r in foundation_exclusion_inventory],
               [3.0, 2.7, 7.0, 4.2], font_size=6.7, header_font_size=6.9, line_spacing=0.9, fixed_layout=True)
@@ -5183,7 +5199,7 @@ def _compact_supp_tables_revised():
         [2.7, 2.0, 1.5, 2.5, 3.3, 3.0], font_size=7.0,
         header_font_size=7.2, line_spacing=1.0, fixed_layout=True,
     )
-    sup.add_heading("Table S10b. Representation pipelines not included", 2)
+    sup.add_heading("Table S10b. Other foundation models not included", 2)
     add_table(
         sup,
         ["Model or family", "Representation level", "Reason not included", "Criterion not met"],
@@ -5266,25 +5282,22 @@ def _compact_supp_figures():
     add_figure(sup, "Figure6_site_grouped_sensitivity.png", f"Figure S3. Supporting TITAN sensitivity to grouping by TCGA tissue-source-site code. The code is a barcode-derived cohort variable, not an institution, scanner or laboratory identifier.", width=6.25)
     sup.add_page_break()
     add_figure(sup, "FigureS12_paired_representation_effects.png", "Figure S4. Paired Q2 and AUROC estimates for all 3,389 matched cancer-endpoint tasks. The comparison is conditional on the specified common probe.", width=6.25)
-    sup.add_paragraph("The two COAD PathoFMPred examples now appear at readable size in main Figures 5 and 6 and are not duplicated in this shortened Supplement.")
-    sup.add_page_break()
+    sup.add_paragraph("The two COAD research examples appear in main Figures 5 and 6; their full reports are Additional files 2 and 3.")
 
 
 def _compact_machine_inventory():
     sup.add_paragraph(
-        "The repository retains complete-resolution records. The groups below replace the former multi-page filename list; source_manifest.csv and software_manifest.csv provide the exact inventory and checksums."
+        "Additional_file_4_machine_readable_results.zip is supplied with this submission. "
+        "Its README and MANIFEST list 16 selected CSV companions with row counts and SHA-256 checksums. "
+        "The archive contains the matched benchmark, endpoint provenance, robustness analyses, model-inventory reconciliation and both COAD research outputs. "
+        "It contains no fitted model objects or patient-level embeddings. The public analysis repository holds the remaining complete-resolution records."
     )
     for item in (
-        "Matched representation atlas: foundation_model_*.csv and results/predictions/foundation_model_*.rds",
-        "Supporting TITAN screen: continuous_screen.csv, binary_screen.csv and repeated nested-validation files",
-        "Permutation and multiplicity: permutation_*.csv, targeted_permutation_*.csv and multiplicity_*.csv",
-        "Tissue-source-site-code analyses: site_grouped_*.csv, tissue_source_site_*.csv and foundation_model_tss_*.csv",
-        "Reliability and operating rules: binary_*.csv and continuous_reliability_*.csv",
-        "Pathology, pooling and linkage: pathology_qc_*.csv, slide_embedding_*.csv, *_pooling_sensitivity.csv and molecular_slide_linkage_audit.csv",
-        "Endpoint provenance and literature: endpoint_*.csv, outcome_source_acquisition_map.csv and *_literature_*.csv",
-        "Software and fitted-object audits: models/model_registry.csv, fitted_model_*.csv and data/reference/software_access_licensing_matrix.csv",
-        "PathoFMPred COAD examples: coad_pathofmpred_multifoundation_*.csv and Additional files 2-3",
-        "Reproducibility manifests: source_manifest.csv, software_manifest.csv and data/reference/analysis_chronology.csv",
+        "Matched benchmark: full task-level estimates, representation comparisons, paired summaries and normalized breadth.",
+        "Interpretation: endpoint dictionary, source-acquisition map, provenance strata, mutation-literature crosswalk and linkage audit.",
+        "Robustness: repeated partitions, tissue-source-site-code grouping and binary operating-rule sensitivity.",
+        "Software examples: full continuous and binary outputs for the two COAD patients in Additional files 2 and 3.",
+        "Resource scope: fitted-object inventory reconciliation, without the fitted parameters themselves.",
     ):
         p = sup.add_paragraph(item, style="List Bullet")
         p.paragraph_format.space_after = Pt(0)
@@ -5369,7 +5382,7 @@ responses = [
     ("6. Preserve effect-size-first interpretation of multi-outcome PLS",
      "Addressed. The comparison of separate single-outcome and joint multi-outcome PLS is now confined to the Supplementary Methods and machine-readable result summary. It remains restricted to coherent inflammatory blocks, uses identical patients and folds, and is interpreted by cancer-level ΔQ² with bootstrap intervals rather than win counts. Binary molecular endpoints retain one-at-a-time PLS-LDA as the primary analysis."),
     ("7. Complete submission-specific fields",
-     "Aamilah Ismail and Martin Ocharo are listed as shared co-first authors, with Martin Ocharo second in the author order and assigned to affiliations 1 and 2. Brendon Price is included in the middle of the author list with the Division of Anatomical Pathology, University of Cape Town and National Health Laboratory Service affiliation. Silvano Piazza, Dinesh Gupta, Alessia Vignoli and Leonardo Tenori are listed before Stefano Cacciatore. Silvano Piazza has dual affiliations with the ICGEB Computational Biology Group in Trieste and the Bioinformatics Facility, CIBIO, University of Trento; Dinesh Gupta has the ICGEB New Delhi affiliation; and Alessia Vignoli and Leonardo Tenori have the Department of Chemistry 'Ugo Schiff' and Magnetic Resonance Center affiliations at the University of Florence. The remaining supplied author names, affiliations, available email addresses and corresponding-author details have been entered. Email addresses for Martin Ocharo, Brendon Price, Ekene Emmanuel Nweke, Silvano Piazza and Dinesh Gupta were not supplied. The declarations now state that the authors have no competing interests, that no specific grant supported the work, and provide a complete CRediT contribution statement. No scientific values are placeholder text."),
+     "Aamilah Ismail and Martin Ocharo are listed as shared co-first authors. Giulia Canarutto follows Martin and has the ICGEB Computational Biology Group and University of Trieste Life Science Department affiliations. Affiliation numbers follow first appearance in the author list. Brendon Price is included with the Division of Anatomical Pathology, University of Cape Town and National Health Laboratory Service affiliation. Silvano Piazza, Dinesh Gupta, Alessia Vignoli and Leonardo Tenori are listed before Stefano Cacciatore. Silvano Piazza shares the ICGEB Trieste affiliation with Giulia and also has the Bioinformatics Facility, CIBIO, University of Trento affiliation. The author-email list was removed; the corresponding-author contact remains. The declarations state that the authors have no competing interests and that no specific grant supported the work. Giulia Canarutto's CRediT roles remain to be confirmed before submission."),
     ("8. Presentation and algorithm-comparison claims",
      "Addressed. High-resolution figures and machine-readable tables accompany the Word documents. Runtime and speed claims were removed. A focused same-fold ridge benchmark was added because it directly tests whether PLS materially outperforms a simpler portable linear model; it is reported with effect magnitudes, uncertainty and selection-conditioning caveats."),
     ("Additional change: distinguish replication from predictors not identified in the reviewed literature",
@@ -5769,10 +5782,10 @@ final_responses = [
         "13. PathoFMPred licensing, access and fitted-object inventory",
         "Contributor-authored PathoFMPred source code and documentation are released "
         "under the MIT License. Fitted objects and third-party inputs are expressly "
-        "excluded from that source-code grant. The public repository contains a "
-        "minimal Giga-SSL example and offers explicit checksum-verified post-install "
-        "downloads for permitted Giga-SSL and Prov-GigaPath collections, each with "
-        "separate asset notices and upstream attribution. The TITAN collection "
+        "excluded from that source-code grant. The public repository contains no "
+        "fitted objects and provides no default model-download URL. Authorized users "
+        "may build a local object or explicitly supply an independently obtained "
+        "collection with its checksum. The TITAN collection "
         "remains only in the access-controlled PathoFMPred-private repository because "
         "the upstream terms describe models trained on TITAN outputs as derivatives "
         "and restrict redistribution. The public package provides generic creation "
@@ -5787,8 +5800,8 @@ final_responses = [
         "repeated feature IDs, pools repeated rows by mean or optional median, "
         "requires more than 100 matched IDs, reports unmatched IDs and endpoint "
         "missingness, and records the positive class for binary outcomes. Source "
-        "tests and R CMD check --as-cran complete without errors or warnings. Model "
-        "downloads and local objects are verified by SHA-256 and structural "
+        "tests and R CMD check --as-cran complete without errors or warnings. Explicitly "
+        "supplied collections and local objects are verified by SHA-256 and structural "
         "validation."
     ),
     (
