@@ -4,6 +4,15 @@ project_root <- function() {
   stop("Run scripts from the pathology-foundation-model-atlas repository root.")
 }
 
+# Future workers otherwise switch R to L'Ecuyer-CMRG. With the same numeric
+# seed, that changes the sampled patient folds relative to a sequential run.
+# Pin the RNG algorithm before every seeded fitting or fold-construction path.
+set_model_rng_kind <- function() {
+  RNGkind(kind = "Mersenne-Twister", normal.kind = "Inversion",
+          sample.kind = "Rejection")
+  invisible(NULL)
+}
+
 load_project_config <- function() {
   root <- project_root()
   source(file.path(root, "config", "analysis.R"), local = FALSE)
@@ -162,6 +171,7 @@ fit_binary_score_path <- function(Xtrain, ytrain, Xtest, cfg, seed) {
 # balanced accuracy. Exact AUROC ties select the smallest component count.
 select_binary_auroc_rule <- function(X, y, outer_train, cfg, seed,
                                      constrain = NULL) {
+  set_model_rng_kind()
   y <- factor(as.character(y), levels = c("0", "1"))
   X_outer <- X[outer_train, , drop = FALSE]
   y_outer <- y[outer_train]
@@ -217,6 +227,7 @@ select_binary_auroc_rule <- function(X, y, outer_train, cfg, seed,
 # at a threshold learned only from inner out-of-fold training scores.
 fit_binary_nested_auroc_once <- function(X, y, cfg, seed, outer = NULL,
                                          inner_constrain = NULL) {
+  set_model_rng_kind()
   y <- factor(as.character(y), levels = c("0", "1"))
   if (is.null(outer)) outer <- stratified_folds(y, cfg$outer_folds, seed)
   outer_values <- sort(unique(outer))
@@ -336,6 +347,7 @@ mean_repeat_binary_metrics <- function(d) {
 }
 
 stratified_folds <- function(y, k, seed) {
+  set_model_rng_kind()
   set.seed(seed)
   out <- integer(length(y))
   for (lev in unique(as.character(y))) {
@@ -346,6 +358,7 @@ stratified_folds <- function(y, k, seed) {
 }
 
 random_folds <- function(n, k, seed) {
+  set_model_rng_kind()
   set.seed(seed)
   sample(rep(seq_len(k), length.out = n))
 }
@@ -433,6 +446,7 @@ fit_continuous_nested_once <- function(X, y, cfg, seed) {
 }
 
 fit_final_model <- function(X, y, outcome_type, ncomp, cfg, seed) {
+  set_model_rng_kind()
   if (outcome_type == "binary") {
     y <- factor(as.character(y), levels = c("0", "1"))
     fastPLS::pls(X, y, ncomp = ncomp, classifier = "lda", fit = TRUE,

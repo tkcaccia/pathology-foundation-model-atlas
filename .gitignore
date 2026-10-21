@@ -11,6 +11,8 @@ data/external/xena/*.gz
 data/processed/
 models/*.rds
 models/foundation_models/*.rds
+models/matched_v04/*.rds
+models/matched_v04_smoke/*.rds
 manuscript/rendered/
 manuscript/rendered_*/
 manuscript/*montage*.png

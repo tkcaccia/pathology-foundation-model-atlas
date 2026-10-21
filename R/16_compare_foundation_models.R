@@ -13,7 +13,7 @@ if (is.finite(component_max) && component_max > 0L) {
 options(backend = tolower(Sys.getenv("TITAN_BACKEND", "cpu")))
 
 model_names <- c("TITAN", "GigaSSL", "ProvGigaPath")
-cohort_mode <- tolower(Sys.getenv("FMPRED_COHORT_MODE", "common_patient"))
+cohort_mode <- tolower(Sys.getenv("FMPRED_COHORT_MODE", "exact_common_slide"))
 if (!cohort_mode %in% c("common_patient", "exact_common_slide")) {
   stop("FMPRED_COHORT_MODE must be common_patient or exact_common_slide")
 }
@@ -234,7 +234,7 @@ setcolorder(results, c("foundation_model", "outcome_type", "family", "subfamily"
                       "tumor_type", "endpoint", "source", "n", "positive", "negative"))
 setorder(results, outcome_type, family, tumor_type, endpoint, foundation_model)
 output_suffix <- paste0(
-  if (cohort_mode == "exact_common_slide") "_exact_common_slide" else "",
+  if (cohort_mode == "exact_common_slide") "_exact_common_slide" else "_common_patient",
   job_label,
   if (max(cfg$analysis$components) == 10L) "" else
     paste0("_components_", max(cfg$analysis$components))
@@ -253,7 +253,7 @@ summary <- results[, .(
   median_pr_auc = median(pr_auc, na.rm = TRUE)
 ), by = .(foundation_model, outcome_type)]
 fwrite(summary, paste0("results/tables/foundation_model_matched_summary", output_suffix, ".csv"))
-if (identical(cohort_mode, "common_patient") && !nzchar(job_file) &&
+if (identical(cohort_mode, "exact_common_slide") && !nzchar(job_file) &&
     nrow(jobs) == nrow(all_jobs)) {
   promoted <- c(
     file.copy(

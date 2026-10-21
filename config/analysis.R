@@ -15,7 +15,7 @@ analysis_config <- list(
   extended_permutations = 999L,
   fdr_alpha = 0.05,
   svd_method = "rsvd",
-  # Current fastPLS 0.3 defaults for the ordinary-shape rSVD profile.
+  # fastPLS 0.4 defaults for the ordinary-shape rSVD profile.
   rsvd_oversample = 32L,
   rsvd_power = 5L
 )

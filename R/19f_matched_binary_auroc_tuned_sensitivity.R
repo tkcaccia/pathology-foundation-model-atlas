@@ -19,7 +19,7 @@ make_fastpls_folds <- getFromNamespace(".make_single_cv_folds", "fastPLS")
 fastpls_description <- packageDescription("fastPLS")
 
 cohorts <- setNames(lapply(model_names, function(model) {
-  readRDS(file.path("data/processed", paste0("patient_cohort_", model, ".rds")))
+  readRDS(file.path("data/processed", paste0("patient_cohort_exact_slides_", model, ".rds")))
 }), model_names)
 common_patients <- Reduce(intersect, lapply(cohorts, function(x) rownames(x$X)))
 binary_targets <- rbindlist(list(
@@ -45,7 +45,7 @@ fingerprint <- digest::digest(list(
   script = digest::digest(file = "R/19f_matched_binary_auroc_tuned_sensitivity.R", algo = "sha256"),
   utils = digest::digest(file = "R/utils.R", algo = "sha256"),
   cohorts = vapply(model_names, function(model) {
-    digest::digest(file = file.path("data/processed", paste0("patient_cohort_", model, ".rds")), algo = "sha256")
+    digest::digest(file = file.path("data/processed", paste0("patient_cohort_exact_slides_", model, ".rds")), algo = "sha256")
   }, character(1)),
   binary_nonmutation = digest::digest(file = "data/processed/binary_targets_nonmutation.rds", algo = "sha256"),
   binary_mutation = digest::digest(file = "data/processed/binary_targets_mutation.rds", algo = "sha256"),

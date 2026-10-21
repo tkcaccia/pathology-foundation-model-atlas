@@ -59,7 +59,7 @@ selection[, stability_job_id := .I]
 fwrite(selection, "results/tables/foundation_model_fold_stability_selection.csv")
 
 cohorts <- setNames(lapply(model_names, function(model) {
-  readRDS(file.path("data/processed", paste0("patient_cohort_", model, ".rds")))
+  readRDS(file.path("data/processed", paste0("patient_cohort_exact_slides_", model, ".rds")))
 }), model_names)
 common_patients <- Reduce(intersect, lapply(cohorts, function(x) rownames(x$X)))
 continuous <- readRDS("data/processed/continuous_targets.rds")[patient %chin% common_patients]
@@ -256,17 +256,22 @@ run_one <- function(i) {
 
 workers <- as.integer(Sys.getenv("TITAN_WORKERS", "6"))
 if (!is.finite(workers) || workers < 1L) workers <- 1L
+pending <- which(!vapply(seq_len(nrow(work)), function(i) {
+  checkpoint_current(checkpoint_path(work$stability_job_id[[i]],
+                                     work$stability_repeat[[i]]))
+}, logical(1)))
+message(length(pending), " task-repeat fits remain after checkpoint audit")
 if (workers == 1L) {
-  for (i in seq_len(nrow(work))) {
+  for (i in pending) {
     run_one(i)
-    if (i %% 10L == 0L || i == nrow(work)) {
-      cat("Completed or resumed", i, "of", nrow(work), "task-repeat fits\n")
+    if (i %% 10L == 0L || i == tail(pending, 1L)) {
+      cat("Completed", i, "of", nrow(work), "task-repeat fits\n")
       flush.console()
     }
   }
-} else {
+} else if (length(pending)) {
   future::plan(future::multicore, workers = workers)
-  invisible(future_lapply(seq_len(nrow(work)), run_one, future.seed = TRUE,
+  invisible(future_lapply(pending, run_one, future.seed = TRUE,
                           future.packages = c("fastPLS", "data.table", "digest"),
                           future.globals = TRUE, future.chunk.size = 1))
 }

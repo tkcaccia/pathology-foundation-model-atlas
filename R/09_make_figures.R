@@ -554,7 +554,7 @@ p_s3c <- ggplot(stability,
                 aes(repeat_score_spearman_mean,
                     repeat_class_agreement_mean, color = evidence)) +
   geom_point(alpha = 0.8, size = 2) +
-  scale_color_manual(values = c("At least 50 per class" = teal,
+  scale_color_manual(values = c("At least 50 per class" = "#2B6CB0",
                                 "Exploratory / limited evidence" = coral)) +
   scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
   scale_y_continuous(limits = c(0.5, 1), breaks = seq(0.5, 1, 0.1)) +

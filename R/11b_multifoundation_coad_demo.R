@@ -14,14 +14,14 @@ model_labels <- c(
 )
 
 model_colours <- c(
-  TITAN = "#2C7FB8",
-  GigaSSL = "#E07A3F",
-  ProvGigaPath = "#2A9D8F"
+  TITAN = "#2B6CB0",
+  GigaSSL = "#D97706",
+  ProvGigaPath = "#17806D"
 )
 
 predict_one_representation <- function(foundation_model) {
   cohort <- readRDS(file.path(
-    "data", "processed", paste0("patient_cohort_", foundation_model, ".rds")
+    "data", "processed", paste0("patient_cohort_exact_slides_", foundation_model, ".rds")
   ))
   idx <- match(patient_ids, cohort$meta$patient)
   if (anyNA(idx)) {
@@ -49,6 +49,35 @@ predictions <- rbindlist(
   fill = TRUE
 )
 
+# Attach the same matched-cohort estimate to every representation. The TITAN
+# model registry also carries estimates from a separate, larger screen, which
+# must not be mixed into this three-representation display.
+matched_metrics <- fread(file.path(
+  "results", "tables", "foundation_model_matched_screen.csv"
+))
+matched_continuous <- matched_metrics[outcome_type == "continuous", .(
+  foundation_model, cancer = tumor_type, family, endpoint,
+  matched_primary_q2 = q2, matched_primary_rmse = rmse,
+  matched_primary_spearman = spearman
+)]
+predictions <- merge(
+  predictions, matched_continuous,
+  by = c("foundation_model", "cancer", "family", "endpoint"),
+  all.x = TRUE, sort = FALSE
+)
+stopifnot(all(is.finite(predictions$matched_primary_q2)))
+continuous_reference <- as.data.table(readRDS(file.path(
+  "data", "processed", "continuous_targets.rds"
+)))[patient %in% patient_ids & tumor_type == "COAD", .(
+  reference_value = first(value)
+), by = .(patient_id = patient, cancer = tumor_type, family, endpoint)]
+predictions <- merge(
+  predictions, continuous_reference,
+  by = c("patient_id", "cancer", "family", "endpoint"),
+  all.x = TRUE, sort = FALSE
+)
+predictions[, labelled_patient_used_in_full_fit := is.finite(reference_value)]
+
 stopifnot(all(
   predictions$predictable_for_selected_cancer_and_representation %in% TRUE
 ))
@@ -57,13 +86,18 @@ setorder(predictions, patient_id, foundation_model, family, endpoint)
 output_columns <- c(
   "patient_id", "cancer", "foundation_model", "source_slide_count",
   "model_id", "family", "endpoint", "outcome_type", "prediction",
+  "reference_value", "labelled_patient_used_in_full_fit",
   "output_units", "reference_percentile", "rank_interpretation",
-  "training_n", "primary_screen_q2", "primary_screen_rmse",
-  "primary_screen_spearman", "model_evidence_tier", "default_inference",
+  "training_n", "matched_primary_q2", "matched_primary_rmse",
+  "matched_primary_spearman", "primary_screen_q2", "primary_screen_rmse",
+  "primary_screen_spearman", "primary_estimate_label", "repeated_estimate_label",
+  "model_evidence_tier", "default_inference",
   "predictable_for_selected_cancer_and_representation", "predictability_rule",
   "representation_effect_threshold_crossing",
   "matched_representation_effect_threshold_crossing", "site_robustness_status",
-  "site_robustness_warning"
+  "site_robustness_warning", "matched_tss_grouped_metric_name",
+  "matched_tss_grouped_operating_metric", "matched_tss_retained_primary_crossing",
+  "matched_tss_validation_scope", "matched_tss_robustness_warning"
 )
 fwrite(
   predictions[, intersect(output_columns, names(predictions)), with = FALSE],
@@ -71,15 +105,20 @@ fwrite(
 )
 
 radar_panels <- list()
+shared_radar_endpoints <- Reduce(intersect, lapply(foundation_models, function(model_name) {
+  unique(predictions[foundation_model == model_name, endpoint])
+}))
+stopifnot(length(shared_radar_endpoints) == 10L)
 radar_endpoint_labels <- c(
   HALLMARK_MYOGENESIS = "Myogenesis",
   HALLMARK_INTERFERON_GAMMA_RESPONSE = "IFN-gamma",
   HALLMARK_INTERFERON_ALPHA_RESPONSE = "IFN-alpha",
+  HALLMARK_INFLAMMATORY_RESPONSE = "Inflammation",
   HALLMARK_IL6_JAK_STAT3_SIGNALING = "IL6/JAK/STAT3",
   HALLMARK_ALLOGRAFT_REJECTION = "Allograft",
   `Silent Mutation Rate` = "Silent rate",
   `Nonsilent Mutation Rate` = "Non-silent",
-  `Aneuploidy Score` = "Aneuploidy I",
+  `Aneuploidy Score` = "Aneuploidy P",
   `Aneuploidy score` = "Aneuploidy T",
   `Lymphocyte Infiltration Signature Score` = "Lymph sig",
   `TIL Regional Fraction` = "TIL fraction",
@@ -96,7 +135,7 @@ for (patient_index in seq_along(patient_ids)) {
       patient_id == patient_ids[patient_index] &
         foundation_model == model_name
     ]
-    d_plot <- copy(d)
+    d_plot <- copy(d[endpoint %chin% shared_radar_endpoints])
     replacement_index <- match(d_plot$endpoint, names(radar_endpoint_labels))
     replace_rows <- which(!is.na(replacement_index))
     d_plot$endpoint[replace_rows] <- unname(
@@ -104,7 +143,7 @@ for (patient_index in seq_along(patient_ids)) {
     )
     panel_title <- paste0(
       if (patient_index == 1L) "Patient A | " else "Patient B | ",
-      model_labels[[model_name]], " (", nrow(d), " endpoints)"
+      model_labels[[model_name]], " (", nrow(d_plot), " shared endpoints)"
     )
     radar_panels[[length(radar_panels) + 1L]] <-
       plot_pathofm_radar(as.data.frame(d_plot), max_endpoints = Inf) +
@@ -127,11 +166,11 @@ p <- wrap_plots(radar_grid, ncol = 3, widths = c(1, 0.13, 1)) +
   plot_annotation(
     title = "PathoFMPred profiles for two COAD patients across three slide representations",
     subtitle = paste0(
-      "Columns compare patients; rows compare representations. Each panel shows only endpoints predictable for that representation.\n",
+      "Columns compare patients; rows compare representations. Only the ten continuous endpoints returned by all three models are plotted.\n",
       "Radius is the internal TCGA reference percentile; corner values are original predictions."
     ),
     caption = paste0(
-      "Panels can contain different endpoints. Compare shared axes directly. Patient A is TCGA-AA-A01F; Patient B is TCGA-A6-A56B.\n",
+      "Every panel has the same endpoints. Patient A is TCGA-AA-A01F; Patient B is TCGA-A6-A56B.\n",
       "Reference percentiles are not probabilities or clinical reference intervals."
     ),
     theme = theme(
@@ -168,7 +207,7 @@ message(
 
 predict_binary_one_representation <- function(foundation_model) {
   cohort <- readRDS(file.path(
-    "data", "processed", paste0("patient_cohort_", foundation_model, ".rds")
+    "data", "processed", paste0("patient_cohort_exact_slides_", foundation_model, ".rds")
   ))
   idx <- match(patient_ids, cohort$meta$patient)
   if (anyNA(idx)) {
@@ -195,6 +234,32 @@ binary_predictions <- rbindlist(
   use.names = TRUE,
   fill = TRUE
 )
+matched_binary <- matched_metrics[outcome_type == "binary", .(
+  foundation_model, cancer = tumor_type, family, endpoint,
+  matched_primary_auroc = auc, matched_primary_pr_auc = pr_auc,
+  matched_primary_balanced_accuracy = balanced_accuracy,
+  matched_primary_prevalence = prevalence
+)]
+binary_predictions <- merge(
+  binary_predictions, matched_binary,
+  by = c("foundation_model", "cancer", "family", "endpoint"),
+  all.x = TRUE, sort = FALSE
+)
+stopifnot(all(is.finite(binary_predictions$matched_primary_auroc)))
+binary_reference <- rbindlist(lapply(
+  c("binary_targets_mutation.rds", "binary_targets_nonmutation.rds"),
+  function(name) as.data.table(readRDS(file.path("data", "processed", name)))
+), use.names = TRUE, fill = TRUE)[
+  patient %in% patient_ids & tumor_type == "COAD", .(
+    reference_value = first(value)
+  ), by = .(patient_id = patient, cancer = tumor_type, family, endpoint)
+]
+binary_predictions <- merge(
+  binary_predictions, binary_reference,
+  by = c("patient_id", "cancer", "family", "endpoint"),
+  all.x = TRUE, sort = FALSE
+)
+binary_predictions[, labelled_patient_used_in_full_fit := is.finite(reference_value)]
 
 stopifnot(all(
   binary_predictions$predictable_for_selected_cancer_and_representation %in% TRUE
@@ -206,14 +271,21 @@ if (!nrow(binary_predictions)) stop("No predictable COAD binary model was return
 binary_output_columns <- c(
   "patient_id", "cancer", "foundation_model", "source_slide_count",
   "model_id", "family", "endpoint", "outcome_type", "predicted_class",
+  "reference_value", "labelled_patient_used_in_full_fit",
   "lda_score", "reference_percentile", "reference_rank",
   "rank_interpretation", "rank_is_probability", "calibration_status",
   "training_n", "training_positive", "training_negative",
-  "repeated_auc", "repeated_pr_auc", "model_evidence_tier",
+  "matched_primary_auroc", "matched_primary_pr_auc",
+  "matched_primary_balanced_accuracy", "matched_primary_prevalence",
+  "primary_screen_auc", "primary_screen_pr_auc", "primary_estimate_label",
+  "repeated_auc", "repeated_pr_auc", "repeated_estimate_label", "model_evidence_tier",
   "default_inference", "predictable_for_selected_cancer_and_representation",
   "predictability_rule", "representation_effect_threshold_crossing",
   "matched_representation_effect_threshold_crossing",
-  "site_robustness_status", "site_robustness_warning"
+  "site_robustness_status", "site_robustness_warning",
+  "matched_tss_grouped_metric_name", "matched_tss_grouped_operating_metric",
+  "matched_tss_retained_primary_crossing", "matched_tss_validation_scope",
+  "matched_tss_robustness_warning"
 )
 fwrite(
   binary_predictions[, intersect(binary_output_columns, names(binary_predictions)),

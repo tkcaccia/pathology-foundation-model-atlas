@@ -72,7 +72,7 @@ if (is.finite(limit) && limit > 0L) {
 
 cohort_full <- readRDS("data/processed/patient_cohort.rds")
 cohorts_matched <- setNames(lapply(model_names, function(model) {
-  readRDS(file.path("data/processed", paste0("patient_cohort_", model, ".rds")))
+  readRDS(file.path("data/processed", paste0("patient_cohort_exact_slides_", model, ".rds")))
 }), model_names)
 common_patients <- Reduce(intersect, lapply(cohorts_matched, function(z) rownames(z$X)))
 
@@ -85,7 +85,7 @@ fingerprint <- digest::digest(list(
   full_cohort = digest::digest(file = "data/processed/patient_cohort.rds", algo = "sha256"),
   matched_cohorts = vapply(model_names, function(model) {
     digest::digest(
-      file = file.path("data/processed", paste0("patient_cohort_", model, ".rds")),
+      file = file.path("data/processed", paste0("patient_cohort_exact_slides_", model, ".rds")),
       algo = "sha256"
     )
   }, character(1)),

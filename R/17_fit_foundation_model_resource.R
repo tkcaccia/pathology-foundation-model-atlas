@@ -36,7 +36,7 @@ registry_rows <- vector("list", nrow(jobs))
 fit_resource_model <- function(i) {
   job <- jobs[i]
   cohort <- readRDS(file.path(
-    "data/processed", paste0("patient_cohort_", job$foundation_model, ".rds")
+    "data/processed", paste0("patient_cohort_exact_slides_", job$foundation_model, ".rds")
   ))
   target <- if (job$outcome_type == "continuous") continuous else binary
   d <- target[family == job$family & tumor_type == job$tumor_type &
@@ -156,7 +156,7 @@ fit_resource_model <- function(i) {
     binary_operating_threshold_median = job$operating_threshold_median,
     repeated_q2 = NA_real_, repeated_rmse = NA_real_, repeated_spearman = NA_real_,
     repeated_sensitivity = NA_real_, repeated_specificity = NA_real_,
-    repeated_balanced_accuracy = NA_real_, repeated_auc = job$auc,
+    repeated_balanced_accuracy = NA_real_, repeated_auc = NA_real_,
     binary_pr_auc = job$pr_auc,
     primary_estimate_label = "matched-cohort patient-level nested-CV estimate",
     repeated_estimate_label = "not performed for this representation",

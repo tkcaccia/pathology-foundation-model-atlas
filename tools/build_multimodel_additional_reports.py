@@ -14,7 +14,6 @@ from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
-    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -35,9 +34,9 @@ MODEL_LABEL = {
     "ProvGigaPath": "Prov-GigaPath",
 }
 MODEL_COLOUR = {
-    "TITAN": colors.HexColor("#2F6DA1"),
-    "GigaSSL": colors.HexColor("#E68613"),
-    "ProvGigaPath": colors.HexColor("#2A9D8F"),
+    "TITAN": colors.HexColor("#2B6CB0"),
+    "GigaSSL": colors.HexColor("#D97706"),
+    "ProvGigaPath": colors.HexColor("#17806D"),
 }
 NAVY = colors.HexColor("#17365D")
 MUTED = colors.HexColor("#526579")
@@ -64,8 +63,7 @@ def number(value: str | None, digits: int = 3) -> str:
         numeric = float(value or "")
     except (TypeError, ValueError):
         return "NA"
-    rendered = f"{numeric:.{digits}f}"
-    return rendered.rstrip("0").rstrip(".") if "." in rendered else rendered
+    return f"{numeric:.{digits}f}"
 
 
 def prediction_value(value: str | None) -> str:
@@ -75,7 +73,7 @@ def prediction_value(value: str | None) -> str:
         return "NA"
     if abs(numeric) < 0.0001 and numeric != 0:
         return f"{numeric:.4e}"
-    return f"{numeric:.6f}".rstrip("0").rstrip(".")
+    return f"{numeric:.6f}"
 
 
 def family_label(family: str) -> str:
@@ -87,6 +85,21 @@ def family_label(family: str) -> str:
         "oncogenic_pathway": "Pathway",
         "thorsson": "Immune/context",
     }.get(family, family.replace("_", " ").title())
+
+
+def display_endpoint(row: dict[str, str]) -> str:
+    endpoint = row.get("endpoint", "")
+    if row.get("family") == "aneuploidy" and endpoint == "Aneuploidy score":
+        return "Aneuploidy score (Taylor)"
+    if row.get("family") == "thorsson" and endpoint == "Aneuploidy Score":
+        return "Aneuploidy Score (Thorsson)"
+    return {
+        "HALLMARK_ALLOGRAFT_REJECTION": "Allograft rejection",
+        "HALLMARK_IL6_JAK_STAT3_SIGNALING": "IL6/JAK/STAT3",
+        "HALLMARK_INTERFERON_ALPHA_RESPONSE": "Interferon-alpha response",
+        "HALLMARK_INTERFERON_GAMMA_RESPONSE": "Interferon-gamma response",
+        "HALLMARK_MYOGENESIS": "Myogenesis",
+    }.get(endpoint, endpoint)
 
 
 def binary_call(row: dict[str, str]) -> str:
@@ -105,6 +118,16 @@ def binary_call(row: dict[str, str]) -> str:
 
 
 def warning_label(row: dict[str, str]) -> str:
+    matched_metric = row.get("matched_tss_grouped_operating_metric", "")
+    try:
+        grouped_value = float(matched_metric)
+    except (TypeError, ValueError):
+        grouped_value = None
+    if grouped_value is not None:
+        retained = str(row.get("matched_tss_retained_primary_crossing", "")).lower() == "true"
+        metric = "Q2" if row.get("outcome_type") == "continuous" else "AUROC"
+        status = "retained" if retained else "not retained"
+        return f"Code-grouped {metric} {grouped_value:.3f}; threshold {status}"
     status = (row.get("site_robustness_status") or "").strip()
     if not status:
         return "No recorded warning"
@@ -239,7 +262,7 @@ def build_report(
         rightMargin=0.42 * inch,
         topMargin=0.38 * inch,
         bottomMargin=0.38 * inch,
-        title="PathoFMPred complete three-representation research-software output",
+        title="PathoFMPred three-representation research-software output",
         author="",
     )
 
@@ -259,7 +282,7 @@ def build_report(
         canvas.restoreState()
 
     story = [
-        paragraph("PathoFMPred complete three-representation output", title),
+        paragraph("PathoFMPred three-representation research output", title),
         paragraph(
             f"COAD {patient_id} | TITAN, Giga-SSL and Prov-GigaPath | {date.today().isoformat()}",
             subtitle,
@@ -314,24 +337,89 @@ def build_report(
     summary.setStyle(table_style())
     story.extend([paragraph("Output inventory", heading), summary, Spacer(1, 9)])
 
+    # A compact, colour-coded view allows readers to compare the three
+    # representation-specific outputs before the full numerical tables.
+    short_endpoint = {
+        "Genome doubling": "Genome doubling",
+        "MSI-H (MANTIS >0.4)": "MSI-H",
+        "MSI-H strict (MANTIS >0.6)": "Strict MSI-H",
+    }
+    endpoints = sorted({(r["family"], r["endpoint"]) for r in binary_rows})
+    by_model_endpoint = {
+        (r["foundation_model"], r["family"], r["endpoint"]): r
+        for r in binary_rows
+    }
+    call_data = [[paragraph("Model", table_header)] + [
+        paragraph(
+            ("TP53 mutation" if family == "driver_mutation" and endpoint == "TP53"
+             else "TP53 pathway" if family == "oncogenic_pathway" and endpoint == "TP53"
+             else short_endpoint.get(endpoint, endpoint)), table_header
+        )
+        for family, endpoint in endpoints
+    ]]
+    for model in MODEL_ORDER:
+        cells = [paragraph(MODEL_LABEL[model], table_text)]
+        for family, endpoint in endpoints:
+            row = by_model_endpoint.get((model, family, endpoint))
+            cells.append(paragraph(binary_call(row) if row else "No output", table_center))
+        call_data.append(cells)
+    call_table = Table(
+        call_data,
+        colWidths=[1.3 * inch] + [8.85 * inch / len(endpoints)] * len(endpoints),
+        repeatRows=1,
+    )
+    call_table.setStyle(table_style())
+    for model_index, model in enumerate(MODEL_ORDER, start=1):
+        for endpoint_index, (family, endpoint) in enumerate(endpoints, start=1):
+            row = by_model_endpoint.get((model, family, endpoint))
+            fill = (POSITIVE_BG if row.get("predicted_class") == "1" else NEGATIVE_BG) if row else LIGHT_GREY
+            call_table.setStyle(TableStyle([
+                ("BACKGROUND", (endpoint_index, model_index),
+                 (endpoint_index, model_index), fill)
+            ]))
+    story.extend([
+        paragraph("Binary-call overview across the three inputs", heading),
+        call_table,
+        paragraph("Colour identifies an uncalibrated research class call, not the observed genotype or a probability. Exact LDA scores and matched-CV performance appear in the model tables.", small),
+        Spacer(1, 7),
+    ])
+
     story.append(paragraph("Case context, not used as model input", heading))
     story.append(paragraph(example.get("pathology", "No case context available."), body))
     story.append(paragraph(example.get("source", ""), small))
     story.append(Spacer(1, 5))
 
+    source_label_counts = []
+    for model in MODEL_ORDER:
+        continuous_count = sum(
+            str(r.get("labelled_patient_used_in_full_fit", "")).lower() == "true"
+            for r in continuous_rows if r.get("foundation_model") == model
+        )
+        binary_count = sum(
+            str(r.get("labelled_patient_used_in_full_fit", "")).lower() == "true"
+            for r in binary_rows if r.get("foundation_model") == model
+        )
+        source_label_counts.append(
+            f"{MODEL_LABEL[model]} {continuous_count} continuous/{binary_count} binary"
+        )
     story.append(paragraph("How to read the report", heading))
     reading_points = [
-        "PathoFMPred lists only representation-specific fitted objects that crossed the recorded internal performance threshold and passed the package's default sample-size rule.",
-        "Continuous predictions remain in the source endpoint units. The internal TCGA rank provides display context and is not a clinical reference interval.",
-        "Binary calls use an uncalibrated fitted LDA rule. The original LDA score is model-specific; neither the score nor its TCGA rank is a probability.",
-        "The example patients lack reference labels for the displayed outcomes in the processed analysis table, so this report demonstrates software output rather than correctness.",
+        "PathoFMPred lists representation-specific fitted objects that crossed the recorded internal performance threshold and passed the package's default sample-size rule. The inventory is not an exhaustive molecular profile.",
+        "Continuous predictions remain in the source endpoint units. Linear predictions are unconstrained and may fall outside the source assay range. The internal TCGA rank provides display context and is not a clinical reference interval.",
+        "Binary calls use a training-derived threshold on an uncalibrated LDA score. Neither the score nor its TCGA rank is a probability.",
+        "The Q2, AUROC and PR-AUC values below are from the primary matched-cohort nested cross-validation; they are not five-repeat averages.",
+        "This TCGA patient had source labels for these returned objects: "
+        + "; ".join(source_label_counts)
+        + ". Where a source label was available, the patient contributed to final full-data fitting. These predictions are not held-out case validation.",
     ]
     for point in reading_points:
         story.append(paragraph("- " + point, body))
 
     source_rows = [
         ["Mutations", "TCGA MC3 protein-altering calls within the Bailey tissue-specific driver catalogue"],
-        ["Genome doubling and aneuploidy", "Taylor et al. arm-level and genome-doubling variables"],
+        ["Aneuploidy score (Taylor)", "Arm-level gain/loss burden from Taylor et al., Cancer Cell 2018, Table S2 (doi:10.1016/j.ccell.2018.03.007)"],
+        ["Aneuploidy Score (Thorsson)", "Separate genomic-context score distributed in the PanImmune matrix of Thorsson et al., Immunity 2018 (doi:10.1016/j.immuni.2018.03.023)"],
+        ["Genome doubling", "Binary copy-number call from Taylor et al., Cancer Cell 2018, Table S2"],
         ["MSI", "cBioPortal TCGA PanCancer MANTIS and MSIsensor variables"],
         ["Oncogenic pathways", "Sanchez-Vega pathway alteration matrix"],
         ["Immune and genomic context", "Published Thorsson PanImmune computational phenotypes"],
@@ -340,7 +428,6 @@ def build_report(
     source_data += [[paragraph(a, table_text), paragraph(b, table_text)] for a, b in source_rows]
     source_table = Table(source_data, colWidths=[2.2 * inch, 7.95 * inch], repeatRows=1)
     source_table.setStyle(table_style())
-    story.extend([Spacer(1, 3), source_table])
 
     for model_index, model in enumerate(MODEL_ORDER):
         story.append(PageBreak())
@@ -360,11 +447,11 @@ def build_report(
             textColor=MODEL_COLOUR[model],
         )
         story.append(paragraph(
-            f"{MODEL_LABEL[model]}: complete predictable output",
+            f"{MODEL_LABEL[model]}: outputs meeting internal criteria",
             model_heading,
         ))
         story.append(paragraph(
-            f"This page reports all {len(model_continuous)} continuous and {len(model_binary)} binary outputs returned for this patient and representation.",
+            f"The following tables list {len(model_continuous)} continuous and {len(model_binary)} binary research outputs returned for this patient and representation.",
             body,
         ))
 
@@ -374,7 +461,7 @@ def build_report(
             paragraph("Prediction", table_header),
             paragraph("Units", table_header),
             paragraph("TCGA rank", table_header),
-            paragraph("Q2", table_header),
+            paragraph("Q2 (CV)", table_header),
             paragraph("Spearman", table_header),
             paragraph("n", table_header),
             paragraph("Grouped sensitivity", table_header),
@@ -382,12 +469,12 @@ def build_report(
         for row in model_continuous:
             continuous_data.append([
                 paragraph(family_label(row.get("family", "")), table_text),
-                paragraph(row.get("endpoint", ""), table_text),
+                paragraph(display_endpoint(row), table_text),
                 paragraph(prediction_value(row.get("prediction")), table_center),
                 paragraph(row.get("output_units", ""), table_text),
                 paragraph(number(row.get("reference_percentile"), 1), table_center),
-                paragraph(number(row.get("primary_screen_q2"), 3), table_center),
-                paragraph(number(row.get("primary_screen_spearman"), 3), table_center),
+                paragraph(number(row.get("matched_primary_q2"), 3), table_center),
+                paragraph(number(row.get("matched_primary_spearman"), 3), table_center),
                 paragraph(row.get("training_n", "NA"), table_center),
                 paragraph(warning_label(row), table_text),
             ])
@@ -399,10 +486,8 @@ def build_report(
             repeatRows=1,
         )
         continuous_table.setStyle(table_style(MODEL_COLOUR[model]))
-        story.append(KeepTogether([
-            paragraph("Continuous internally derived estimates", subheading),
-            continuous_table,
-        ]))
+        story.append(paragraph("Continuous internally derived estimates", subheading))
+        story.append(continuous_table)
         story.append(Spacer(1, 7))
 
         binary_data = [[
@@ -411,20 +496,20 @@ def build_report(
             paragraph("Predicted class", table_header),
             paragraph("LDA score", table_header),
             paragraph("TCGA rank", table_header),
-            paragraph("AUROC", table_header),
-            paragraph("PR-AUC", table_header),
+            paragraph("AUROC (CV)", table_header),
+            paragraph("PR-AUC (CV)", table_header),
             paragraph("Training n (+/-)", table_header),
             paragraph("Grouped sensitivity", table_header),
         ]]
         for row in model_binary:
             binary_data.append([
                 paragraph(family_label(row.get("family", "")), table_text),
-                paragraph(row.get("endpoint", ""), table_text),
+                paragraph(display_endpoint(row), table_text),
                 paragraph(binary_call(row), table_center),
                 paragraph(number(row.get("lda_score"), 3), table_center),
                 paragraph(number(row.get("reference_rank"), 1), table_center),
-                paragraph(number(row.get("repeated_auc"), 3), table_center),
-                paragraph(number(row.get("repeated_pr_auc"), 3), table_center),
+                paragraph(number(row.get("matched_primary_auroc"), 3), table_center),
+                paragraph(number(row.get("matched_primary_pr_auc"), 3), table_center),
                 paragraph(
                     f"{row.get('training_n', 'NA')} ({row.get('training_positive', 'NA')}/{row.get('training_negative', 'NA')})",
                     table_center,
@@ -442,17 +527,23 @@ def build_report(
         for index, row in enumerate(model_binary, start=1):
             fill = POSITIVE_BG if str(row.get("predicted_class", "")) == "1" else NEGATIVE_BG
             binary_table.setStyle(TableStyle([("BACKGROUND", (2, index), (2, index), fill)]))
-        story.append(KeepTogether([
-            paragraph("Binary research-model calls", subheading),
-            binary_table,
-        ]))
-        story.append(Spacer(1, 5))
-        story.append(paragraph(
-            "AUROC and PR-AUC are internal repeated out-of-fold performance estimates. "
-            "The class call shown here comes from the fitted model object and is not a calibrated probability. "
-            "Grouped sensitivity uses TCGA tissue-source-site code, a barcode-derived cohort variable rather than an institution, scanner or laboratory identifier.",
-            small,
-        ))
+        story.append(paragraph("Binary research-model calls", subheading))
+        story.append(binary_table)
+
+    story.extend([
+        PageBreak(),
+        paragraph("Reference labels and performance estimates", heading),
+        paragraph(
+            "Q2, AUROC and PR-AUC in these tables are primary matched-cohort nested-CV estimates, not means of five repeats. "
+            "The patient-level values and class calls come from final models fitted to all eligible labelled TCGA patients. "
+            "The example patients contributed to fitting a final object whenever its reference label is available; these "
+            "case predictions are not held-out validation. Grouped sensitivity was evaluated for all three representations "
+            "by separating TCGA tissue-source-site codes in both outer and inner folds. The code is not a scanner, laboratory "
+            "or independent institution identifier.",
+            body,
+        ),
+        source_table,
+    ])
 
     document.build(story, onFirstPage=footer, onLaterPages=footer)
 

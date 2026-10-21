@@ -1,0 +1,7 @@
+foundation_model,outcome_type,eligible_targets,screen_statistic_ge_tier_B,screen_statistic_ge_tier_A,median_q2,median_auc,median_balanced_accuracy,median_pr_auc
+GigaSSL,binary,426,160,53,,0.571515930268535,0.55,0.254468217201548
+ProvGigaPath,binary,426,177,53,,0.585041097401412,0.559303506091432,0.267771592552886
+TITAN,binary,426,233,88,,0.611123369288423,0.583527439858481,0.279134373281854
+GigaSSL,continuous,2963,347,43,0.0167994692767157,,,
+ProvGigaPath,continuous,2963,438,59,0.0169634251502289,,,
+TITAN,continuous,2963,668,126,0.0583954458202207,,,

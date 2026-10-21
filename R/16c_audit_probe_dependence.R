@@ -9,21 +9,34 @@ cfg <- load_project_config()
 
 models <- c("TITAN", "GigaSSL", "ProvGigaPath")
 cohorts <- setNames(lapply(models, function(m) {
-  readRDS(file.path("data/processed", paste0("patient_cohort_", m, ".rds")))
+  readRDS(file.path("data/processed", paste0("patient_cohort_exact_slides_", m, ".rds")))
 }), models)
 common <- Reduce(intersect, lapply(cohorts, function(z) rownames(z$X)))
-jobs <- fread("results/tables/pls_vs_ridge_representative_jobs.csv")
 primary <- fread("results/tables/foundation_model_matched_screen.csv")
-task_key <- c("outcome_type", "family", "tumor_type", "endpoint")
-primary_tasks <- unique(primary[, ..task_key])
-missing_matched_jobs <- jobs[!primary_tasks, on = task_key]
-fwrite(
-  missing_matched_jobs,
-  "results/tables/foundation_model_ridge_probe_ineligible_jobs.csv"
-)
-jobs <- jobs[primary_tasks, on = task_key, nomatch = 0L]
+jobs <- unique(primary[foundation_model == "TITAN", .(
+  outcome_type, family, tumor_type, endpoint, n, positive, negative
+)])
+jobs[, size_stratum := fcase(
+  n < 100L, "small", n < 300L, "medium", default = "large"
+)]
+jobs[, imbalance_stratum := fifelse(
+  outcome_type == "continuous", "not applicable",
+  fcase(pmin(positive, negative) / n < 0.10, "high",
+        pmin(positive, negative) / n < 0.25, "moderate",
+        default = "low")
+)]
+# Selection uses only outcome family, labelled sample size, class balance and
+# a deterministic task-name hash. No representation's performance is used.
+jobs[, selection_hash := vapply(seq_len(.N), function(i) {
+  digest::digest(paste(outcome_type[[i]], family[[i]], tumor_type[[i]],
+                       endpoint[[i]], sep = "::"), algo = "sha256")
+}, character(1))]
+setorder(jobs, selection_hash)
+jobs <- jobs[, .SD[1L], by = .(outcome_type, family, size_stratum,
+                               imbalance_stratum)]
 setorder(jobs, outcome_type, family, tumor_type, endpoint)
 if (!nrow(jobs)) stop("No representative probe jobs are eligible in the matched cohort")
+fwrite(jobs, "results/tables/foundation_model_probe_representative_jobs.csv")
 continuous <- readRDS("data/processed/continuous_targets.rds")
 binary <- rbindlist(list(
   readRDS("data/processed/binary_targets_nonmutation.rds"),
@@ -87,6 +100,7 @@ ridge_nested <- function(X, y, binary_outcome, seed) {
 }
 
 run_one_job <- function(j) {
+  set_model_rng_kind()
   job <- jobs[j]; targets <- if (job$outcome_type == "binary") binary else continuous
   d <- targets[family == job$family & tumor_type == job$tumor_type & endpoint == job$endpoint & patient %chin% common]
   setorder(d, patient)

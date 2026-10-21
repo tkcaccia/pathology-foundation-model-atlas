@@ -119,7 +119,7 @@ p3 <- ggplot(winner_plot, aes(outcome_type, primary_winner_repeat_proportion,
                              fill = outcome_type)) +
   geom_violin(trim = TRUE, alpha = 0.65, colour = NA, width = 0.82) +
   geom_boxplot(width = 0.18, outlier.shape = NA, fill = "white", linewidth = 0.5) +
-  geom_jitter(width = 0.10, alpha = 0.20, size = 0.75) +
+  geom_jitter(width = 0.10, height = 0, alpha = 0.20, size = 0.75) +
   scale_fill_manual(values = c(continuous = "#4C78A8", binary = "#B45F06")) +
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
   labs(

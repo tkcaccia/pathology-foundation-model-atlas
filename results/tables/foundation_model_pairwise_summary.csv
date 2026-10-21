@@ -1,5 +1,5 @@
 comparison,outcome_type,targets,spearman_effect,median_delta_vs_TITAN,other_higher,TITAN_higher,tied,cluster_bootstrap_low,cluster_bootstrap_high,uncertainty_method
-GigaSSL versus TITAN,binary,426,0.661166846789512,-0.033568916327426,130,296,0,-0.0479924925125352,-0.0217391304347829,cancer-cluster bootstrap of median paired task effects; descriptive
-GigaSSL versus TITAN,continuous,2963,0.803999788387367,-0.043507069546747,817,2146,0,-0.0514741036312643,-0.0347261588121095,cancer-cluster bootstrap of median paired task effects; descriptive
-ProvGigaPath versus TITAN,binary,426,0.717109367875527,-0.0256091803316675,137,288,1,-0.033726067746686,-0.0176929059308855,cancer-cluster bootstrap of median paired task effects; descriptive
-ProvGigaPath versus TITAN,continuous,2963,0.811237265372508,-0.0450893208953363,839,2124,0,-0.053988064887291,-0.034558639942591,cancer-cluster bootstrap of median paired task effects; descriptive
+GigaSSL versus TITAN,binary,426,0.620962651511771,-0.0375198923783205,128,298,0,-0.0568815589090406,-0.026041666666666,cancer-cluster bootstrap of median paired task effects; descriptive
+GigaSSL versus TITAN,continuous,2963,0.814826969911409,-0.0435463481940987,834,2129,0,-0.0505060828327437,-0.0366610600893095,cancer-cluster bootstrap of median paired task effects; descriptive
+ProvGigaPath versus TITAN,binary,426,0.719796919212359,-0.023062447508148,140,286,0,-0.033105118143108,-0.0135666647665741,cancer-cluster bootstrap of median paired task effects; descriptive
+ProvGigaPath versus TITAN,continuous,2963,0.811942635587219,-0.046508678399901,807,2156,0,-0.0551899893118699,-0.037473023861748,cancer-cluster bootstrap of median paired task effects; descriptive

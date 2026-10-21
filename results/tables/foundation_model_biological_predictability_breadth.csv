@@ -1,8 +1,8 @@
-figure_class,eligible,at_least_one,all_three
-Direct genomic alterations,243,160,65
-Composite genomic-context status,183,108,57
-Sequencing-derived burdens,413,39,10
-Transcriptomic signatures,279,101,51
-RNA-derived pathway activities,1456,486,209
-Inferred immune-cell fractions,638,31,13
-Continuous genomic-context scores,166,35,11
+figure_class,eligible,at_least_one,all_three,any_rate,shared_rate,count_label
+Direct genomic alterations,243,157,60,64.6090534979424,24.6913580246914,157/243
+Composite genomic-context status,183,119,54,65.0273224043716,29.5081967213115,119/183
+Sequencing-derived burdens,413,40,11,9.68523002421307,2.6634382566586,40/413
+Transcriptomic signatures,279,105,45,37.6344086021505,16.1290322580645,105/279
+RNA-derived pathway activities,1456,502,205,34.478021978022,14.0796703296703,502/1456
+Inferred immune-cell fractions,638,34,13,5.32915360501567,2.03761755485893,34/638
+Continuous genomic-context scores,166,36,11,21.6867469879518,6.62650602409639,36/166

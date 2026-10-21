@@ -30,9 +30,6 @@ def number(value):
 
 targets = read("foundation_model_target_comparison.csv")
 pairwise = read("foundation_model_pairwise_summary.csv")
-site_rows = read("continuous_site_grouped_sensitivity.csv") + read("binary_site_grouped_sensitivity.csv")
-site = {(r["outcome_type"] if "outcome_type" in r else ("binary" if "positive" in r else "continuous"),
-         r["family"], r["tumor_type"], r["endpoint"]): r for r in site_rows}
 matched_grouped_rows = read("foundation_model_tss_grouped_sensitivity.csv")
 matched_grouped = {
     (r["outcome_type"], r["family"], r["subfamily"], r["tumor_type"],
@@ -63,19 +60,6 @@ for row in targets:
         consensus = "no effect-threshold crossing"
         priority_score = max(effects.values())
 
-    sr = site.get((row["outcome_type"], row["family"], row["tumor_type"], row["endpoint"]))
-    if sr:
-        grouped = number(sr.get("site_grouped_q2", sr.get("site_grouped_balanced_accuracy")))
-        random = number(sr.get("random_q2", sr.get("random_balanced_accuracy")))
-        threshold = 0.20 if row["outcome_type"] == "continuous" else 0.60
-        retained = grouped is not None and grouped >= threshold
-        tss_status = "retained under TSS grouping" if retained else "fell below threshold under TSS grouping"
-        near_chance = grouped is not None and grouped <= (0 if row["outcome_type"] == "continuous" else 0.50)
-    else:
-        grouped = random = None
-        retained = near_chance = False
-        tss_status = "not evaluated in TITAN candidate TSS analysis"
-
     task_key = (row["outcome_type"], row["family"], row["subfamily"],
                 row["tumor_type"], row["endpoint"], row["source"])
     grouped_by_model = {
@@ -84,7 +68,13 @@ for row in targets:
     grouped_metrics = {
         model: (number(grouped_by_model[model][
             "grouped_q2" if row["outcome_type"] == "continuous"
-            else "grouped_balanced_accuracy"
+            else "grouped_auc"
+        ]) if grouped_by_model[model] else None) for model in MODELS
+    }
+    matched_random_metrics = {
+        model: (number(grouped_by_model[model][
+            "matched_random_q2" if row["outcome_type"] == "continuous"
+            else "matched_random_auc"
         ]) if grouped_by_model[model] else None) for model in MODELS
     }
     grouped_retained = {
@@ -106,11 +96,12 @@ for row in targets:
         "n_representations_retained": n_supported, "consensus_class": consensus,
         "effect_TITAN": effects["TITAN"], "effect_GigaSSL": effects["GigaSSL"],
         "effect_ProvGigaPath": effects["ProvGigaPath"], "priority_score": priority_score,
-        "TITAN_tss_random_metric": random, "TITAN_tss_grouped_metric": grouped,
-        "TITAN_tss_status": tss_status, "TITAN_tss_near_chance_or_worse": near_chance,
         "matched_grouped_metric_TITAN": grouped_metrics["TITAN"],
         "matched_grouped_metric_GigaSSL": grouped_metrics["GigaSSL"],
         "matched_grouped_metric_ProvGigaPath": grouped_metrics["ProvGigaPath"],
+        "matched_random_metric_TITAN": matched_random_metrics["TITAN"],
+        "matched_random_metric_GigaSSL": matched_random_metrics["GigaSSL"],
+        "matched_random_metric_ProvGigaPath": matched_random_metrics["ProvGigaPath"],
         "matched_grouped_retained_TITAN": grouped_retained["TITAN"],
         "matched_grouped_retained_GigaSSL": grouped_retained["GigaSSL"],
         "matched_grouped_retained_ProvGigaPath": grouped_retained["ProvGigaPath"],
@@ -175,7 +166,7 @@ for outcome_type in ("continuous", "binary"):
         "spearman_effect": paired["spearman_effect"],
         "uncertainty_method": paired["uncertainty_method"],
         "scope_note": (
-            "paired released embedding-pipeline comparison under the specified PLS1/PLS-LDA probe; "
+            "paired released slide-representation comparison under the specified PLS/PLS-LDA probe; "
             "reported pretraining corpora excluded TCGA; not external validation or isolated model quality"
         ),
     })
@@ -195,14 +186,14 @@ def take(rows, n, label):
                 break
 def take_all_three(outcome_type):
     pool = [r for r in records if r["n_representations_retained"] == 3 and r["outcome_type"] == outcome_type]
-    first = max(pool, key=lambda r: (r["effect_TITAN"], r["tumor_type"], r["endpoint"]))
+    first = max(pool, key=lambda r: (min(r[f"effect_{model}"] for model in MODELS), r["tumor_type"], r["endpoint"]))
     x = dict(first)
-    x["selection_reason"] = f"all-three {outcome_type}: largest TITAN effect"
+    x["selection_reason"] = f"all-three {outcome_type}: strongest minimum effect"
     selected.append(x)
     remaining = [r for r in pool if (r["family"], r["tumor_type"], r["endpoint"]) != (first["family"], first["tumor_type"], first["endpoint"])]
-    second = max(remaining, key=lambda r: ((r["effect_GigaSSL"] + r["effect_ProvGigaPath"]) / 2, r["tumor_type"], r["endpoint"]))
+    second = max(remaining, key=lambda r: (sum(r[f"effect_{model}"] for model in MODELS) / 3, r["tumor_type"], r["endpoint"]))
     x = dict(second)
-    x["selection_reason"] = f"all-three {outcome_type}: largest mean alternative-representation effect"
+    x["selection_reason"] = f"all-three {outcome_type}: largest mean effect"
     selected.append(x)
 
 # Replace the generic duplicated all-three labels with two explicit,
@@ -211,9 +202,19 @@ take_all_three("continuous")
 take_all_three("binary")
 take([r for r in records if r["n_representations_retained"] == 2], 2, "strongest retained by two")
 take([r for r in records if r["n_representations_retained"] == 1], 2, "strongest representation-specific")
-collapse = [r for r in records if r["TITAN_tss_status"].startswith("fell")]
+def largest_grouped_drop(record):
+    changes = [
+        record[f"matched_grouped_metric_{model}"] - record[f"matched_random_metric_{model}"]
+        for model in MODELS
+        if record[f"matched_grouped_metric_{model}"] is not None
+        and record[f"matched_random_metric_{model}"] is not None
+    ]
+    return min(changes) if changes else None
+
+collapse = [r for r in records if r["n_representations_retained"] > 0
+            and largest_grouped_drop(r) is not None]
 collapse_added = 0
-for r in sorted(collapse, key=lambda x: (x["TITAN_tss_grouped_metric"] or -999) - (x["TITAN_tss_random_metric"] or -999)):
+for r in sorted(collapse, key=largest_grouped_drop):
     key = (r["outcome_type"], r["family"], r["tumor_type"], r["endpoint"])
     if key not in {(x["outcome_type"], x["family"], x["tumor_type"], x["endpoint"]) for x in selected}:
         x = dict(r); x["selection_reason"] = "largest tissue-source-site-code-grouped collapse"; selected.append(x)

@@ -407,7 +407,8 @@ p2 <- ggplot(long, aes(effect_TITAN, other_effect, colour = comparison)) +
   labs(x = "TITAN comparison statistic\n(Q2 continuous; AUROC binary)",
        y = "Alternative representation statistic\n(Q2 continuous; AUROC binary)",
        title = "Agreement and representation-specific performance") +
-  theme_minimal(base_size = 13) + theme(legend.position = "none")
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none", panel.spacing.y = grid::unit(0.58, "in"))
 
 patterns <- wide[, .N, by = .(outcome_type, support_pattern)]
 patterns <- patterns[support_pattern != "None"]
@@ -477,9 +478,9 @@ ggsave("figures/Figure2_foundation_model_breadth_effect.png",
        p1, width = 9.2, height = 5.0, dpi = 320,
        bg = "white")
 ggsave("results/figures/FigureS12_paired_representation_effects.png",
-       p2, width = 10.2, height = 7.0, dpi = 320, bg = "white")
+       p2, width = 10.2, height = 7.8, dpi = 320, bg = "white")
 ggsave("figures/FigureS12_paired_representation_effects.png",
-       p2, width = 10.2, height = 7.0, dpi = 320, bg = "white")
+       p2, width = 10.2, height = 7.8, dpi = 320, bg = "white")
 ggsave("results/figures/Figure3_foundation_model_consensus_retention.png",
        comparison_consensus_retention, width = 11.6, height = 5.6, dpi = 320)
 ggsave("figures/Figure3_foundation_model_consensus_retention.png",

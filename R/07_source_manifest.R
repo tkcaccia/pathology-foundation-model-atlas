@@ -59,7 +59,7 @@ software_packages <- c(
   "jsonlite", "maftools", "pROC", "readxl", "TCGAmutations", "testthat"
 )
 configured_source <- c(
-  fastPLS = "CRAN fastPLS 0.3",
+  fastPLS = "fastPLS 0.4; source revision 265108b6aa250c2534f98ec89037bb5cd001dca0",
   TCGAmutations = paste0(
     "PoisonAlien/TCGAmutations@",
     "3474e3412cfa1490db4a84db57e4a732480990a9"
@@ -76,9 +76,7 @@ software <- rbindlist(lapply(software_packages, function(package) {
       as.character(description$RemoteSha) else NA_character_,
     configured_source = if (package %chin% names(configured_source))
       configured_source[[package]] else NA_character_,
-    configured_source_sha256 = if (package == "fastPLS")
-      "e752ed28dcbaf162d8e622d3c7dc436b315ef4b767c06db2ae8b29cbbfa7b51f"
-      else NA_character_
+    configured_source_sha256 = NA_character_
   )
 }))
 software <- rbindlist(list(

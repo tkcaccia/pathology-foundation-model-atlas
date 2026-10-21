@@ -17,7 +17,7 @@ setorder(jobs, outcome_type, family, tumor_type, endpoint)
 jobs[, grouped_job_id := .I]
 
 cohorts <- lapply(c("TITAN", "GigaSSL", "ProvGigaPath"), function(model) {
-  readRDS(file.path("data/processed", paste0("patient_cohort_", model, ".rds")))
+  readRDS(file.path("data/processed", paste0("patient_cohort_exact_slides_", model, ".rds")))
 })
 common_patients <- Reduce(intersect, lapply(cohorts, function(x) rownames(x$X)))
 continuous <- readRDS("data/processed/continuous_targets.rds")[

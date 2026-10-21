@@ -1,0 +1,7 @@
+foundation_model,outcome_type,tasks,median_delta,q1_delta,q3_delta,spearman_primary_common_patient,primary_threshold_crossings,common_patient_threshold_crossings,lost_threshold,gained_threshold,maximum_absolute_delta
+GigaSSL,binary,426,0,0,0,0.994738420882091,161,160,2,1,0.145185185185185
+GigaSSL,continuous,2963,0,0,0,0.995286960219561,351,347,6,2,0.397456958679648
+ProvGigaPath,binary,426,0,0,0,0.998929895587985,179,177,2,0,0.047368421052631
+ProvGigaPath,continuous,2963,0,0,0,0.999548801316392,439,438,2,1,0.143968708505074
+TITAN,binary,426,0,0,0,0.997171068843146,235,233,2,0,0.0764912280701751
+TITAN,continuous,2963,0,0,0,0.996568202268397,669,668,2,1,0.381857306579801

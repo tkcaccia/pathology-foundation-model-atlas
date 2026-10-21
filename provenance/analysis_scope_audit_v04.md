@@ -1,0 +1,17 @@
+# Analysis scope and exclusion audit
+
+The primary comparison uses the patient and diagnostic-slide intersection of TITAN, Giga-SSL and Prov-GigaPath. Every represented patient has the same slide identifiers, outcome definition and nested validation partitions in all three analyses. The matched cohort contains 8,241 patients, 10,165 slide identifiers and 3,389 eligible cancer-endpoint pairs across 30 cancers. These counts describe the comparison population, not all patients or outcomes available in an individual release.
+
+| Item | Primary-analysis treatment | Scientific reason |
+| --- | --- | --- |
+| TIL Regional Fraction from H&E | Included in the complete matched atlas; excluded only from the default non-H&E reference-phenotype summary | This target is inferred from histology, so its association with another H&E representation is same-modality concordance rather than cross-modal agreement. Eleven matched cancer-endpoint pairs have this status. |
+| Patients or diagnostic slides missing from one released representation | Excluded from the primary matched input; each available slide is used in a secondary all-available-slides sensitivity | Matching both patients and slide identifiers prevents tissue-subset differences from being attributed to the representation. |
+| Cancer-endpoint pairs available only in a larger single-representation cohort | Not used to rank the three representations | Paired model differences require the same outcome-labelled patients. Results from a larger single-representation cohort answer a different question. |
+| Outcomes below 50 labelled patients or 20 cases per binary class, or with no continuous variation | Recorded as ineligible, not treated as tested-negative | Too few independent patient observations or no outcome variation make the specified nested evaluation non-estimable. The rule is identical across representations. |
+| Effect estimates below Q² 0.20 or AUROC 0.60 | Retained in the complete matched atlas with their numerical estimates | The thresholds organize descriptive follow-up. No permutation p-value or false-discovery-rate claim is assigned to a matched-atlas crossing in the present manuscript. |
+| Alternative-partition repetition | Conducted for the union of crossings from any representation plus pairs near either threshold | Selection uses the three-representation union and a symmetric threshold band; it does not privilege one representation. |
+| Tissue-source-site-code grouping | Conducted for the union of crossings from any representation using all three representations | Cohort-structure sensitivity is assessed for the claims highlighted by the matched atlas. Complete codes are held apart in both inner and outer folds. |
+| Generated pathology narrative mentions of no residual tumour | Retained in primary analysis; examined only as a non-adjudicated sensitivity | Generated text is not an independently adjudicated tumour-content label. |
+| External cohorts | Not evaluated | Compatible slide representations and matched molecular outcomes were not available for an independent validation cohort. Internal TCGA results cannot be interpreted as external validation. |
+
+Direct genomic alterations, sequencing-derived burdens, transcriptomic signatures, inferred immune fractions, composite scores and same-H&E quantities remain separate endpoint classes. A computationally inferred score is not described as a directly measured cell count. Selection for a descriptive summary never removes the underlying result from the machine-readable atlas.

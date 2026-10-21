@@ -3,6 +3,7 @@ options(repos = c(CRAN = "https://cloud.r-project.org"))
 cran <- c(
   "data.table", "readxl", "digest", "jsonlite", "future.apply", "float",
   "progressr", "pROC", "ggplot2", "glmnet", "testthat", "remotes",
+  "gpuinfo",
   "BiocManager"
 )
 missing <- cran[!vapply(cran, requireNamespace, logical(1), quietly = TRUE)]
@@ -12,37 +13,14 @@ dir.create(".Rlib", showWarnings = FALSE)
 .libPaths(c(normalizePath(".Rlib"), .libPaths()))
 
 need_fastpls <- !requireNamespace("fastPLS", quietly = TRUE) ||
-  packageVersion("fastPLS") != "0.3" ||
-  !identical(packageDescription("fastPLS")$Repository, "CRAN")
+  packageVersion("fastPLS") != "0.4"
 if (need_fastpls) {
-  fastpls_archive <- tempfile(fileext = ".tar.gz")
-  fastpls_urls <- c(
-    "https://cloud.r-project.org/src/contrib/fastPLS_0.3.tar.gz",
-    "https://cloud.r-project.org/src/contrib/Archive/fastPLS/fastPLS_0.3.tar.gz"
+  remotes::install_github(
+    "tkcaccia/fastPLS@265108b6aa250c2534f98ec89037bb5cd001dca0",
+    lib = ".Rlib", upgrade = "never", dependencies = TRUE, force = TRUE
   )
-  downloaded <- FALSE
-  for (url in fastpls_urls) {
-    downloaded <- tryCatch({
-      status <- suppressWarnings(download.file(
-        url, fastpls_archive, mode = "wb", quiet = TRUE
-      ))
-      identical(status, 0L) && file.exists(fastpls_archive) &&
-        file.info(fastpls_archive)$size > 0
-    }, error = function(e) FALSE)
-    if (downloaded) break
-  }
-  if (!downloaded) stop("Could not download the pinned CRAN fastPLS 0.3 source")
-  fastpls_sha256 <- digest::digest(file = fastpls_archive, algo = "sha256")
-  expected_sha256 <-
-    "e752ed28dcbaf162d8e622d3c7dc436b315ef4b767c06db2ae8b29cbbfa7b51f"
-  if (!identical(fastpls_sha256, expected_sha256)) {
-    stop("CRAN fastPLS 0.3 source SHA-256 mismatch: ", fastpls_sha256)
-  }
-  install.packages(fastpls_archive, lib = ".Rlib", repos = NULL, type = "source")
-  unlink(fastpls_archive)
 }
-stopifnot(as.character(packageVersion("fastPLS")) == "0.3",
-          identical(packageDescription("fastPLS")$Repository, "CRAN"))
+stopifnot(as.character(packageVersion("fastPLS")) == "0.4")
 
 if (!requireNamespace("PathoFMPred", quietly = TRUE)) {
   remotes::install_github(
@@ -66,5 +44,4 @@ if (!requireNamespace("TCGAmutations", quietly = TRUE)) {
 }
 
 message("fastPLS ", as.character(packageVersion("fastPLS")),
-        " from ", packageDescription("fastPLS")$Repository,
         " installed at ", find.package("fastPLS"))

@@ -22,7 +22,7 @@ setorder(jobs, outcome_type, family, tumor_type, endpoint)
 jobs[, grouped_job_id := .I]
 
 cohorts <- setNames(lapply(model_names, function(model) {
-  readRDS(file.path("data/processed", paste0("patient_cohort_", model, ".rds")))
+  readRDS(file.path("data/processed", paste0("patient_cohort_exact_slides_", model, ".rds")))
 }), model_names)
 common_patients <- Reduce(intersect, lapply(cohorts, function(x) rownames(x$X)))
 continuous <- readRDS("data/processed/continuous_targets.rds")[patient %chin% common_patients]
@@ -33,6 +33,7 @@ binary <- rbindlist(list(
 make_folds <- getFromNamespace(".make_single_cv_folds", "fastPLS")
 
 matched_outer <- function(grouped, y, binary_outcome, seed) {
+  set_model_rng_kind()
   set.seed(seed)
   out <- rep(NA_integer_, length(grouped))
   folds <- sort(unique(grouped))
@@ -178,6 +179,7 @@ checkpoint_current <- function(path) {
 }
 
 run_job <- function(i) {
+  set_model_rng_kind()
   path <- checkpoint_path(i)
   if (checkpoint_current(path)) return(NULL)
   job <- jobs[grouped_job_id == i]
@@ -439,10 +441,15 @@ job_limit <- as.integer(Sys.getenv("FMPRED_TSS_JOB_LIMIT", "0"))
 if (is.finite(job_limit) && job_limit > 0L) {
   run_ids <- head(run_ids, job_limit)
 }
-future::plan(future::multicore, workers = workers)
-invisible(future_lapply(run_ids, run_job, future.seed = TRUE,
-                        future.packages = c("fastPLS", "data.table"),
-                        future.globals = TRUE, future.chunk.size = 1))
+pending <- run_ids[!vapply(run_ids, function(i) checkpoint_current(checkpoint_path(i)),
+                           logical(1))]
+message(length(pending), " grouped-validation jobs remain after checkpoint audit")
+if (length(pending)) {
+  if (workers > 1L) future::plan(future::multicore, workers = workers)
+  invisible(future_lapply(pending, run_job, future.seed = TRUE,
+                          future.packages = c("fastPLS", "data.table"),
+                          future.globals = TRUE, future.chunk.size = 1))
+}
 if (length(run_ids) < nrow(jobs)) {
   cat("Completed test subset:", length(run_ids), "of", nrow(jobs), "jobs\n")
   quit(save = "no", status = 0L)

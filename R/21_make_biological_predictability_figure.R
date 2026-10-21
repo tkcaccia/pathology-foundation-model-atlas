@@ -99,20 +99,11 @@ breadth <- comparison[
   ),
   by = figure_class
 ]
-breadth_long <- melt(
-  breadth,
-  id.vars = c("figure_class", "eligible"),
-  measure.vars = c("at_least_one", "all_three"),
-  variable.name = "support_scope",
-  value.name = "crossings"
-)
-breadth_long[, crossing_rate := 100 * crossings / eligible]
-breadth_long[, count_label := sprintf("%d/%d", crossings, eligible)]
-breadth_long[, figure_class := factor(figure_class, levels = rev(class_order))]
-breadth_long[, support_scope := factor(
-  support_scope,
-  levels = c("at_least_one", "all_three"),
-  labels = c("At least one representation", "All three representations")
+breadth[, `:=`(
+  any_rate = 100 * at_least_one / eligible,
+  shared_rate = 100 * all_three / eligible,
+  count_label = sprintf("%d/%d", at_least_one, eligible),
+  figure_class = factor(figure_class, levels = rev(class_order))
 )]
 
 leadership <- comparison[
@@ -148,29 +139,30 @@ theme_predictability <- function(base_size = 14) {
 }
 
 same_histology_excluded <- sum(comparison$same_histology_modality %in% TRUE)
-p_breadth <- ggplot(
-  breadth_long,
-  aes(crossing_rate, figure_class, colour = support_scope)
-) +
-  geom_point(
-    position = position_dodge(width = 0.55),
-    size = 3.2
+p_breadth <- ggplot(breadth, aes(y = figure_class)) +
+  geom_segment(
+    aes(x = shared_rate, xend = any_rate, yend = figure_class),
+    colour = "#A9B7C6", linewidth = 0.8
   ) +
+  geom_point(aes(x = any_rate, colour = "One or more"), size = 3.2) +
+  geom_point(aes(x = shared_rate, colour = "All three"), size = 3.2) +
+  geom_text(aes(x = any_rate, label = count_label), hjust = -0.18,
+            size = 3.2, fontface = "bold", colour = ink) +
   scale_x_continuous(
-    limits = c(0, 100),
     breaks = seq(0, 100, 20),
     labels = function(x) paste0(x, "%"),
-    expand = expansion(mult = c(0.01, 0.01))
+    expand = expansion(mult = c(0, 0))
   ) +
+  coord_cartesian(xlim = c(0, 110), clip = "off") +
   scale_colour_manual(values = c(
-    "At least one representation" = "#334E68",
-    "All three representations" = "#2A9D8F"
+    "One or more" = "#596579",
+    "All three" = "#8E6CB8"
   )) +
   labs(
     x = "Effect-threshold crossing rate (%)",
     y = NULL,
-    title = "A  Crossing rates by reference-phenotype class",
-    subtitle = sprintf("Percent of eligible pairs; %d same-H&E tasks excluded.", same_histology_excluded)
+    title = "A  Predictable feature classes",
+    subtitle = "Labels give crossing pairs out of all eligible pairs."
   ) +
   theme_predictability(14) +
   theme(
@@ -214,7 +206,7 @@ p_leadership <- ggplot(
     y = NULL,
     title = "Leading representation by tumour-feature class",
     subtitle = sprintf(
-      "%d cross-modal threshold-crossing pairs; labels show counts in segments at least 7%% wide.",
+      "%d cross-modal pairs; counts are labelled in wider segments",
       sum(comparison$any_crossing & comparison$same_histology_modality == FALSE)
     ),
     caption = paste0(
@@ -282,10 +274,7 @@ to_plot_long <- function(selected) {
   selected[, best_representation := c("TITAN", "GigaSSL", "ProvGigaPath")[
     max.col(cbind(effect_TITAN, effect_GigaSSL, effect_ProvGigaPath), ties.method = "first")
   ]]
-  selected[, best_label := fifelse(
-    best_representation == "ProvGigaPath", "Prov-GP",
-    unname(representation_labels[best_representation])
-  )]
+  selected[, best_label := unname(representation_labels[best_representation])]
   long <- melt(
     selected,
     id.vars = c(
@@ -336,7 +325,7 @@ effect_plot <- function(data, threshold, x_limits, breaks, label_x, best_label_x
       ),
       inherit.aes = FALSE,
       hjust = 0,
-      size = 3.8,
+      size = 3.2,
       fontface = "bold",
       family = "Arial",
       show.legend = FALSE

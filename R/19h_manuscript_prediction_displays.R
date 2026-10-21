@@ -27,9 +27,9 @@ model_labels <- c(
   ProvGigaPath = "Prov-GigaPath"
 )
 model_colours <- c(
-  TITAN = "#2F6DA1",
-  GigaSSL = "#E68613",
-  ProvGigaPath = "#2A9D8F"
+  TITAN = "#2B6CB0",
+  GigaSSL = "#D97706",
+  ProvGigaPath = "#17806D"
 )
 
 q2_value <- function(observed, predicted) {
@@ -138,6 +138,10 @@ file.copy(
   file.path(result_figure_dir, basename(observed_prediction_path)),
   overwrite = TRUE
 )
+if (identical(Sys.getenv("FMPRED_FIGURE4_ONLY"), "true")) {
+  cat("Wrote observed-versus-predicted display from the current matched OOF results\n")
+  quit(save = "no", status = 0L)
+}
 
 binary <- read.csv(binary_file, stringsAsFactors = FALSE, check.names = FALSE)
 binary <- subset(
@@ -160,12 +164,12 @@ feature_order <- feature_order[
   order(feature_order$family_rank, feature_order$endpoint), , drop = FALSE
 ]
 feature_order$feature_label <- mapply(function(family, endpoint) {
-  if (family == "driver_mutation") return(paste("Mutation |", endpoint))
-  if (family == "oncogenic_pathway") return(paste("Pathway |", endpoint))
-  if (family == "fusion") return(paste("Fusion |", endpoint))
-  if (family == "microsatellite_instability") return(paste("MSI-H |", endpoint))
+  if (family == "driver_mutation") return(paste("Mutation:", endpoint))
+  if (family == "oncogenic_pathway") return(paste("Pathway:", endpoint))
+  if (family == "fusion") return(paste("Fusion:", sub("^Any called fusion$", "any called", endpoint)))
+  if (family == "microsatellite_instability") return("MSI-H: MANTIS >0.4")
   if (family == "microsatellite_instability_sensitivity") {
-    return(paste("MSI-H strict |", endpoint))
+    return("MSI-H: MANTIS >0.6")
   }
   if (family == "aneuploidy") return(endpoint)
   paste(gsub("_", " ", family), "|", endpoint)
@@ -200,7 +204,7 @@ binary_display <- merge(
 binary_display$patient_label <- factor(
   binary_display$patient_id,
   levels = patients,
-  labels = paste0(c("Patient A | ", "Patient B | "), patients)
+  labels = paste0(c("Patient A: ", "Patient B: "), patients)
 )
 binary_display$representation_label <- factor(
   binary_display$foundation_model,
@@ -213,22 +217,16 @@ binary_display$feature_label <- factor(
 )
 
 positive_call <- function(family) {
-  ifelse(
-    family == "driver_mutation", "MUTATION",
-    ifelse(
-      family %in% c("microsatellite_instability", "microsatellite_instability_sensitivity"),
-      "MSI-H", ifelse(family == "aneuploidy", "PRESENT", "ALTERED")
-    )
-  )
+  ifelse(family == "driver_mutation", "Mut",
+         ifelse(family %in% c("microsatellite_instability",
+                              "microsatellite_instability_sensitivity"), "MSI-H",
+                ifelse(family == "aneuploidy", "Yes", "Alt")))
 }
 negative_call <- function(family) {
-  ifelse(
-    family == "driver_mutation", "WILD TYPE",
-    ifelse(
-      family %in% c("microsatellite_instability", "microsatellite_instability_sensitivity"),
-      "NOT MSI-H", ifelse(family == "aneuploidy", "ABSENT", "NOT ALTERED")
-    )
-  )
+  ifelse(family == "driver_mutation", "WT",
+         ifelse(family %in% c("microsatellite_instability",
+                              "microsatellite_instability_sensitivity"), "MSS",
+                ifelse(family == "aneuploidy", "No", "No alt")))
 }
 
 binary_display$status <- ifelse(
@@ -238,24 +236,13 @@ binary_display$status <- ifelse(
 )
 binary_display$call_text <- ifelse(
   is.na(binary_display$predicted_class),
-  "NOT RETURNED",
+  "-",
   ifelse(
     as.integer(binary_display$predicted_class) == 1L,
     positive_call(binary_display$family),
     negative_call(binary_display$family)
   )
 )
-binary_display$cell_label <- ifelse(
-  is.na(binary_display$predicted_class),
-  binary_display$call_text,
-  sprintf(
-    "%s\nscore %.2f | rank %.1f",
-    binary_display$call_text,
-    binary_display$lda_score,
-    binary_display$reference_rank
-  )
-)
-
 binary_path <- file.path(
   figure_dir, "Figure6_COAD_PathoFMPred_full_binary_output.png"
 )
@@ -263,15 +250,14 @@ p_binary <- ggplot(
   binary_display,
   aes(x = representation_label, y = feature_label)
 ) +
-  geom_tile(aes(fill = status), colour = "white", linewidth = 0.75) +
+  geom_tile(aes(fill = status), colour = "white", linewidth = 0.35) +
   geom_text(
-    aes(label = cell_label),
+    aes(label = call_text),
     colour = "#172B4D",
-    size = 2.55,
-    lineheight = 0.96,
+    size = 2.3,
     fontface = "bold"
   ) +
-  facet_wrap(~patient_label, ncol = 1, scales = "fixed") +
+  facet_grid(~patient_label) +
   scale_fill_manual(
     values = c(
       "Positive call" = "#F6C3BB",
@@ -281,33 +267,32 @@ p_binary <- ggplot(
     breaks = c("Positive call", "Negative call", "Not returned")
   ) +
   labs(
-    title = "Complete PathoFMPred binary output\nfor two COAD patients",
+    title = "Binary calls for two COAD examples",
     subtitle = paste0(
-      "All predictable binary features across TITAN, Giga-SSL and Prov-GigaPath.\n",
-      "Cells show the class call, original LDA score and internal TCGA score rank."
+      "Every returned cancer-specific endpoint across TITAN, Giga-SSL and Prov-GigaPath.\n",
+      "Mut/WT = mutation/wild type; Alt/No alt = altered/not altered; - = no returned model."
     ),
     x = NULL,
     y = NULL,
     fill = NULL,
     caption = paste0(
-      "Reference rank, not probability. LDA scores are uncalibrated.\n",
-      "NOT RETURNED: no eligible fitted model for this pipeline and feature.\n",
-      "Full-data TCGA examples; not held-out validation."
+      "Research class calls from full-data TCGA fits; these patients are not held-out tests.\n",
+      "Original uncalibrated LDA scores and internal reference ranks, not probabilities, are in Additional files 2 and 3."
     )
   ) +
-  theme_minimal(base_size = 8.4, base_family = "Arial") +
+  theme_minimal(base_size = 8.0, base_family = "Arial") +
   theme(
     panel.grid = element_blank(),
-    axis.text.x = element_text(face = "bold", size = 8.7, colour = "#172B4D"),
-    axis.text.y = element_text(face = "bold", size = 7.7, colour = "#172B4D"),
-    strip.text = element_text(face = "bold", size = 9.4, colour = "#172B4D"),
+    axis.text.x = element_text(face = "bold", size = 7.2, colour = "#172B4D"),
+    axis.text.y = element_text(size = 7.4, colour = "#172B4D"),
+    strip.text = element_text(face = "bold", size = 8.5, colour = "#172B4D"),
     strip.background = element_rect(fill = "#EAF1F7", colour = NA),
-    plot.title = element_text(face = "bold", size = 12.2, colour = "#172B4D"),
-    plot.subtitle = element_text(size = 8.2, colour = "#526579"),
-    plot.caption = element_text(size = 6.8, colour = "#526579", hjust = 0),
+    plot.title = element_text(face = "bold", size = 11.5, colour = "#172B4D"),
+    plot.subtitle = element_text(size = 7.5, colour = "#526579"),
+    plot.caption = element_text(size = 6.3, colour = "#526579", hjust = 0),
     legend.position = "bottom",
-    legend.text = element_text(size = 7.5),
-    panel.spacing.y = grid::unit(0.34, "cm"),
+    legend.text = element_text(size = 7.0),
+    panel.spacing.x = grid::unit(0.18, "cm"),
     plot.margin = margin(8, 8, 8, 8)
   )
 
@@ -315,7 +300,7 @@ ggsave(
   binary_path,
   p_binary,
   width = 6.35,
-  height = max(8.15, 2.0 + 0.76 * nrow(feature_order)),
+  height = 8.0,
   dpi = 400,
   bg = "white"
 )
@@ -328,7 +313,7 @@ ggsave(
   file.path(figure_dir, "Figure6_COAD_PathoFMPred_full_binary_output.pdf"),
   p_binary,
   width = 6.35,
-  height = max(8.15, 2.0 + 0.76 * nrow(feature_order)),
+  height = 8.0,
   device = cairo_pdf,
   bg = "white"
 )

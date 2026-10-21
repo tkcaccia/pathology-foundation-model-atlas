@@ -22,7 +22,7 @@ make_fastpls_folds <- getFromNamespace(".make_single_cv_folds", "fastPLS")
 fastpls_description <- packageDescription("fastPLS")
 
 cohorts <- setNames(lapply(models, function(model) {
-  readRDS(file.path("data/processed", paste0("patient_cohort_", model, ".rds")))
+  readRDS(file.path("data/processed", paste0("patient_cohort_exact_slides_", model, ".rds")))
 }), models)
 common_patients <- Reduce(intersect, lapply(cohorts, function(x) rownames(x$X)))
 binary_targets <- rbindlist(list(
@@ -64,7 +64,7 @@ fingerprint <- digest::digest(list(
   utils = digest::digest(file = "R/utils.R", algo = "sha256"),
   cohorts = vapply(models, function(model) {
     digest::digest(file = file.path(
-      "data/processed", paste0("patient_cohort_", model, ".rds")
+      "data/processed", paste0("patient_cohort_exact_slides_", model, ".rds")
     ), algo = "sha256")
   }, character(1)),
   binary_nonmutation = digest::digest(
