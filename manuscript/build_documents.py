@@ -3312,11 +3312,11 @@ def _compact_results():
         width=6.35,
     )
     doc.add_paragraph(
-        "Figure 6 shows every returned binary endpoint rather than a selected mutation subset. "
+        "Figure 5 compares ten continuous endpoints returned by all three slide representations. Figure 6 shows every returned binary endpoint rather than a selected mutation subset. "
         f"TITAN returned {coad_returned_endpoints('TITAN', 'binary')}, Giga-SSL returned {coad_returned_endpoints('GigaSSL', 'binary')} and Prov-GigaPath returned {coad_returned_endpoints('ProvGigaPath', 'binary')} binary endpoints. "
         f"For TCGA-AA-A01F, APC mutation calls were {coad_binary_call('TCGA-AA-A01F', 'TITAN', 'driver_mutation', 'APC')}, {coad_binary_call('TCGA-AA-A01F', 'GigaSSL', 'driver_mutation', 'APC')} and {coad_binary_call('TCGA-AA-A01F', 'ProvGigaPath', 'driver_mutation', 'APC')} for TITAN, Giga-SSL and Prov-GigaPath, respectively; KRAS calls were {coad_binary_call('TCGA-AA-A01F', 'TITAN', 'driver_mutation', 'KRAS')}, {coad_binary_call('TCGA-AA-A01F', 'GigaSSL', 'driver_mutation', 'KRAS')} and {coad_binary_call('TCGA-AA-A01F', 'ProvGigaPath', 'driver_mutation', 'KRAS')}. "
         f"For TCGA-A6-A56B, APC calls were {coad_binary_call('TCGA-A6-A56B', 'TITAN', 'driver_mutation', 'APC')}, {coad_binary_call('TCGA-A6-A56B', 'GigaSSL', 'driver_mutation', 'APC')} and {coad_binary_call('TCGA-A6-A56B', 'ProvGigaPath', 'driver_mutation', 'APC')}; KRAS calls were {coad_binary_call('TCGA-A6-A56B', 'TITAN', 'driver_mutation', 'KRAS')}, {coad_binary_call('TCGA-A6-A56B', 'GigaSSL', 'driver_mutation', 'KRAS')} and {coad_binary_call('TCGA-A6-A56B', 'ProvGigaPath', 'driver_mutation', 'KRAS')}. "
-        "Figure 5 compares the continuous endpoints returned by all three slide representations, while Figure 6 shows every returned binary endpoint. Additional files 2 and 3 provide every continuous and binary output, including original predictions, uncalibrated scores, reference ranks and source-label availability. Where a patient had an outcome label, that label contributed to fitting the final full-data object. These illustrations do not test held-out accuracy or clinical utility."
+        "Additional files 2 and 3 provide every continuous and binary output, including original predictions, uncalibrated scores, reference ranks and source-label availability. Where a patient had an outcome label, that label contributed to fitting the final full-data object. These illustrations do not test held-out accuracy or clinical utility."
     )
 
 _replace_block(doc, "Results", "Discussion", _compact_results)
