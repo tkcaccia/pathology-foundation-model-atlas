@@ -20,6 +20,6 @@ The tissue-source-site-code preflight completed for all three representations bu
 
 All 2,034 representation-specific final fits were saved, but `R/17b_fit_matched_resource_v04.R` initially used `data.table::fifelse()` with more than three arguments while assembling a text warning. The error was `unused argument ("")`. The script now uses `data.table::fcase()` for that multi-condition field, and the cached fits are being reused. This was an analysis-script bug, not a fastPLS failure.
 
-## Package-behaviour conclusion pending final check
+## Package-behaviour conclusion after the matched rerun
 
-No other fastPLS 0.4 behaviour should be labelled defective until the complete rerun, sequential/parallel reproducibility check without concurrent workloads, and package tests finish. The exact fastPLS version and analysis settings are recorded in the software snapshot.
+The complete matched benchmark and its release audit finished under fastPLS 0.4. The public and private PathoFMPred package checks finished without errors or warnings. No fastPLS 0.4 defect was confirmed. The concurrent-process segfault above remains unisolated and should not be attributed to fastPLS without a standalone reproducer. A dedicated sequential-versus-parallel reproducibility test, run without another active workload, remains worthwhile. The exact fastPLS version and analysis settings are recorded in the software snapshot.
