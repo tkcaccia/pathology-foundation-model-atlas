@@ -1,0 +1,204 @@
+tumor_type,feature_class,eligible,crossing,rate,label
+ACC,Genomic status,1,1,100,1
+ACC,Sequence burden,10,1,10,1
+ACC,RNA pathway,52,17,32.6923076923077,17
+ACC,Genomic score,6,1,16.6666666666667,1
+ACC,Inferred immune fraction,22,1,4.54545454545455,1
+ACC,RNA signature,10,0,0,""
+BLCA,Genomic status,11,6,54.5454545454546,6
+BLCA,Mutation or fusion,31,11,35.4838709677419,11
+BLCA,Sequence burden,16,0,0,""
+BLCA,RNA pathway,52,27,51.9230769230769,27
+BLCA,Genomic score,6,1,16.6666666666667,1
+BLCA,Inferred immune fraction,23,1,4.34782608695652,1
+BLCA,RNA signature,10,8,80,8
+BRCA,Genomic status,10,8,80,8
+BRCA,Mutation or fusion,21,13,61.9047619047619,13
+BRCA,Sequence burden,16,3,18.75,3
+BRCA,RNA pathway,52,36,69.2307692307692,36
+BRCA,Genomic score,6,5,83.3333333333333,5
+BRCA,Inferred immune fraction,23,1,4.34782608695652,1
+BRCA,RNA signature,10,5,50,5
+CESC,Genomic status,10,5,50,5
+CESC,Mutation or fusion,7,4,57.1428571428572,4
+CESC,Sequence burden,16,0,0,""
+CESC,RNA pathway,52,13,25,13
+CESC,Genomic score,6,0,0,""
+CESC,Inferred immune fraction,23,1,4.34782608695652,1
+CESC,RNA signature,10,2,20,2
+COAD,Genomic status,12,11,91.6666666666667,11
+COAD,Mutation or fusion,14,13,92.8571428571429,13
+COAD,Sequence burden,16,7,43.75,7
+COAD,RNA pathway,52,10,19.2307692307692,10
+COAD,Genomic score,6,2,33.3333333333333,2
+COAD,Inferred immune fraction,23,1,4.34782608695652,1
+COAD,RNA signature,10,3,30,3
+DLBC,Mutation or fusion,1,1,100,1
+ESCA,Genomic status,9,7,77.7777777777778,7
+ESCA,Mutation or fusion,1,1,100,1
+ESCA,Sequence burden,15,0,0,""
+ESCA,RNA pathway,52,3,5.76923076923077,3
+ESCA,Genomic score,6,0,0,""
+ESCA,Inferred immune fraction,23,0,0,""
+ESCA,RNA signature,10,0,0,""
+GBM,Genomic status,3,3,100,3
+GBM,Mutation or fusion,4,1,25,1
+GBM,Sequence burden,13,0,0,""
+GBM,RNA pathway,52,18,34.6153846153846,18
+GBM,Genomic score,6,1,16.6666666666667,1
+GBM,Inferred immune fraction,23,1,4.34782608695652,1
+GBM,RNA signature,10,3,30,3
+HNSC,Genomic status,11,6,54.5454545454546,6
+HNSC,Mutation or fusion,19,10,52.6315789473684,10
+HNSC,Sequence burden,16,0,0,""
+HNSC,RNA pathway,52,8,15.3846153846154,8
+HNSC,Genomic score,6,2,33.3333333333333,2
+HNSC,Inferred immune fraction,23,1,4.34782608695652,1
+HNSC,RNA signature,10,2,20,2
+KICH,Mutation or fusion,1,0,0,""
+KICH,Genomic status,1,1,100,1
+KICH,Sequence burden,10,1,10,1
+KICH,RNA pathway,52,5,9.61538461538461,5
+KICH,Genomic score,6,2,33.3333333333333,2
+KICH,Inferred immune fraction,23,0,0,""
+KICH,RNA signature,10,3,30,3
+KIRC,Genomic status,6,3,50,3
+KIRC,Mutation or fusion,6,4,66.6666666666667,4
+KIRC,Sequence burden,16,1,6.25,1
+KIRC,RNA pathway,52,24,46.1538461538462,24
+KIRC,Genomic score,6,1,16.6666666666667,1
+KIRC,Inferred immune fraction,23,1,4.34782608695652,1
+KIRC,RNA signature,10,7,70,7
+KIRP,Mutation or fusion,1,1,100,1
+KIRP,Genomic status,6,4,66.6666666666667,4
+KIRP,Sequence burden,16,0,0,""
+KIRP,RNA pathway,52,25,48.0769230769231,25
+KIRP,Genomic score,6,2,33.3333333333333,2
+KIRP,Inferred immune fraction,23,3,13.0434782608696,3
+KIRP,RNA signature,10,4,40,4
+LGG,Genomic status,10,8,80,8
+LGG,Mutation or fusion,14,13,92.8571428571429,13
+LGG,Sequence burden,13,1,7.69230769230769,1
+LGG,RNA pathway,52,30,57.6923076923077,30
+LGG,Genomic score,6,0,0,""
+LGG,Inferred immune fraction,23,1,4.34782608695652,1
+LGG,RNA signature,10,5,50,5
+LIHC,Genomic status,11,5,45.4545454545455,5
+LIHC,Mutation or fusion,8,6,75,6
+LIHC,Sequence burden,16,0,0,""
+LIHC,RNA pathway,52,42,80.7692307692308,42
+LIHC,Genomic score,6,2,33.3333333333333,2
+LIHC,Inferred immune fraction,23,1,4.34782608695652,1
+LIHC,RNA signature,10,7,70,7
+LUAD,Genomic status,11,5,45.4545454545455,5
+LUAD,Mutation or fusion,16,9,56.25,9
+LUAD,Sequence burden,16,5,31.25,5
+LUAD,RNA pathway,52,23,44.2307692307692,23
+LUAD,Genomic score,6,4,66.6666666666667,4
+LUAD,Inferred immune fraction,23,1,4.34782608695652,1
+LUAD,RNA signature,10,7,70,7
+LUSC,Genomic status,11,3,27.2727272727273,3
+LUSC,Mutation or fusion,18,4,22.2222222222222,4
+LUSC,Sequence burden,16,1,6.25,1
+LUSC,RNA pathway,52,17,32.6923076923077,17
+LUSC,Genomic score,6,1,16.6666666666667,1
+LUSC,Inferred immune fraction,23,2,8.69565217391304,2
+LUSC,RNA signature,10,6,60,6
+MESO,Mutation or fusion,1,0,0,""
+MESO,Genomic status,2,1,50,1
+MESO,Sequence burden,13,0,0,""
+MESO,RNA pathway,52,6,11.5384615384615,6
+MESO,Genomic score,6,0,0,""
+MESO,Inferred immune fraction,22,0,0,""
+MESO,RNA signature,10,3,30,3
+OV,Genomic status,1,1,100,1
+OV,Mutation or fusion,1,1,100,1
+OV,Sequence burden,14,0,0,""
+OV,RNA pathway,52,15,28.8461538461539,15
+OV,Genomic score,6,1,16.6666666666667,1
+OV,Inferred immune fraction,22,0,0,""
+OV,RNA signature,10,1,10,1
+PAAD,Genomic status,8,4,50,4
+PAAD,Mutation or fusion,5,3,60,3
+PAAD,Sequence burden,16,0,0,""
+PAAD,RNA pathway,52,29,55.7692307692308,29
+PAAD,Genomic score,6,0,0,""
+PAAD,Inferred immune fraction,23,0,0,""
+PAAD,RNA signature,10,0,0,""
+PCPG,Genomic status,3,3,100,3
+PCPG,Mutation or fusion,1,0,0,""
+PCPG,Sequence burden,13,0,0,""
+PCPG,RNA pathway,52,14,26.9230769230769,14
+PCPG,Genomic score,6,0,0,""
+PCPG,Inferred immune fraction,22,0,0,""
+PCPG,RNA signature,10,2,20,2
+PRAD,Genomic status,9,5,55.5555555555556,5
+PRAD,Mutation or fusion,5,4,80,4
+PRAD,Sequence burden,16,0,0,""
+PRAD,RNA pathway,52,10,19.2307692307692,10
+PRAD,Genomic score,6,1,16.6666666666667,1
+PRAD,Inferred immune fraction,22,0,0,""
+PRAD,RNA signature,10,2,20,2
+READ,Genomic status,6,5,83.3333333333333,5
+READ,Mutation or fusion,4,3,75,3
+READ,Sequence burden,16,0,0,""
+READ,RNA pathway,52,3,5.76923076923077,3
+READ,Genomic score,6,0,0,""
+READ,Inferred immune fraction,23,0,0,""
+READ,RNA signature,10,1,10,1
+SARC,Genomic status,8,5,62.5,5
+SARC,Mutation or fusion,4,3,75,3
+SARC,Sequence burden,16,1,6.25,1
+SARC,RNA pathway,52,24,46.1538461538462,24
+SARC,Genomic score,6,3,50,3
+SARC,Inferred immune fraction,23,2,8.69565217391304,2
+SARC,RNA signature,10,7,70,7
+SKCM,Genomic status,1,1,100,1
+SKCM,Mutation or fusion,2,1,50,1
+SKCM,Sequence burden,16,2,12.5,2
+SKCM,RNA pathway,52,1,1.92307692307692,1
+SKCM,Genomic score,6,1,16.6666666666667,1
+SKCM,Inferred immune fraction,23,2,8.69565217391304,2
+SKCM,RNA signature,10,3,30,3
+STAD,Genomic status,12,11,91.6666666666667,11
+STAD,Mutation or fusion,19,16,84.2105263157895,16
+STAD,Sequence burden,15,4,26.6666666666667,4
+STAD,RNA pathway,52,17,32.6923076923077,17
+STAD,Genomic score,6,4,66.6666666666667,4
+STAD,Inferred immune fraction,23,1,4.34782608695652,1
+STAD,RNA signature,10,5,50,5
+TGCT,Mutation or fusion,2,2,100,2
+TGCT,Genomic status,1,1,100,1
+TGCT,Sequence burden,16,2,12.5,2
+TGCT,RNA pathway,52,49,94.2307692307692,49
+TGCT,Genomic score,6,1,16.6666666666667,1
+TGCT,Inferred immune fraction,23,3,13.0434782608696,3
+TGCT,RNA signature,10,7,70,7
+THCA,Mutation or fusion,4,4,100,4
+THCA,Genomic status,4,3,75,3
+THCA,Sequence burden,16,4,25,4
+THCA,RNA pathway,52,30,57.6923076923077,30
+THCA,Genomic score,6,0,0,""
+THCA,Inferred immune fraction,23,3,13.0434782608696,3
+THCA,RNA signature,10,6,60,6
+THYM,Mutation or fusion,2,1,50,1
+THYM,Sequence burden,15,4,26.6666666666667,4
+THYM,RNA pathway,52,30,57.6923076923077,30
+THYM,Genomic score,6,2,33.3333333333333,2
+THYM,Inferred immune fraction,22,6,27.2727272727273,6
+THYM,RNA signature,9,6,66.6666666666667,6
+UCEC,Genomic status,13,10,76.9230769230769,10
+UCEC,Mutation or fusion,49,38,77.5510204081633,38
+UCEC,Sequence burden,16,6,37.5,6
+UCEC,RNA pathway,52,6,11.5384615384615,6
+UCEC,Genomic score,6,4,66.6666666666667,4
+UCEC,Inferred immune fraction,23,1,4.34782608695652,1
+UCEC,RNA signature,10,5,50,5
+UCS,Mutation or fusion,1,1,100,1
+UCS,Genomic status,2,1,50,1
+UCS,Sequence burden,10,0,0,""
+UCS,RNA pathway,52,6,11.5384615384615,6
+UCS,Genomic score,4,0,0,""
+UCS,Inferred immune fraction,23,1,4.34782608695652,1
+UCS,RNA signature,10,0,0,""
+UVM,Mutation or fusion,2,2,100,2

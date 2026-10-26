@@ -1,0 +1,5 @@
+foundation_model,outcome_type,eligible_targets,screen_statistic_ge_tier_B,screen_statistic_ge_tier_A,median_q2,median_auc,median_balanced_accuracy,median_pr_auc
+GigaSSL,binary,31,14,4,,0.585048463600742,0.566220394968023,0.0838883905743213
+TITAN,binary,31,20,6,,0.631931627814532,0.607079985235242,0.0950731611346714
+GigaSSL,continuous,108,40,1,0.128225683501588,,,
+TITAN,continuous,108,51,11,0.192701643943774,,,

@@ -12,7 +12,18 @@ if (is.finite(component_max) && component_max > 0L) {
 }
 options(backend = tolower(Sys.getenv("TITAN_BACKEND", "cpu")))
 
-model_names <- c("TITAN", "GigaSSL", "ProvGigaPath")
+default_model_names <- c("TITAN", "GigaSSL", "ProvGigaPath")
+model_names <- trimws(strsplit(Sys.getenv(
+  "FMPRED_MODELS", paste(default_model_names, collapse = ",")
+), ",", fixed = TRUE)[[1L]])
+if (!length(model_names) || anyDuplicated(model_names) ||
+    !all(model_names %in% default_model_names)) {
+  stop("FMPRED_MODELS must be a nonempty, comma-separated subset of ",
+       paste(default_model_names, collapse = ", "))
+}
+cancer_filter <- trimws(strsplit(Sys.getenv("FMPRED_CANCERS", ""),
+                               ",", fixed = TRUE)[[1L]])
+cancer_filter <- cancer_filter[nzchar(cancer_filter)]
 cohort_mode <- tolower(Sys.getenv("FMPRED_COHORT_MODE", "exact_common_slide"))
 if (!cohort_mode %in% c("common_patient", "exact_common_slide")) {
   stop("FMPRED_COHORT_MODE must be common_patient or exact_common_slide")
@@ -47,16 +58,24 @@ binary_jobs <- binary[, .(
 ]
 binary_jobs[, outcome_type := "binary"]
 jobs <- rbindlist(list(continuous_jobs, binary_jobs), fill = TRUE)
+if (length(cancer_filter)) {
+  jobs <- jobs[tumor_type %chin% cancer_filter]
+  if (!nrow(jobs)) stop("No eligible jobs for FMPRED_CANCERS")
+}
 setorder(jobs, outcome_type, family, tumor_type, endpoint)
 jobs[, job_id := .I]
 
 all_jobs <- copy(jobs)
 job_file <- Sys.getenv("FMPRED_JOB_FILE", "")
-job_label <- ""
+job_label <- paste0(
+  if (length(cancer_filter)) paste0("_", paste(cancer_filter, collapse = "_")) else "",
+  if (!identical(model_names, default_model_names))
+    paste0("_", paste(model_names, collapse = "_")) else ""
+)
 if (nzchar(job_file)) {
   selected_jobs <- fread(job_file)[, .(outcome_type, family, tumor_type, endpoint)]
   jobs <- jobs[selected_jobs, on=.(outcome_type, family, tumor_type, endpoint), nomatch=0L]
-  job_label <- paste0("_", tools::file_path_sans_ext(basename(job_file)))
+  job_label <- paste0(job_label, "_", tools::file_path_sans_ext(basename(job_file)))
   setorder(jobs, outcome_type, family, tumor_type, endpoint)
   jobs[, job_id := .I]
 }
@@ -254,6 +273,7 @@ summary <- results[, .(
 ), by = .(foundation_model, outcome_type)]
 fwrite(summary, paste0("results/tables/foundation_model_matched_summary", output_suffix, ".csv"))
 if (identical(cohort_mode, "exact_common_slide") && !nzchar(job_file) &&
+    !length(cancer_filter) && identical(model_names, default_model_names) &&
     nrow(jobs) == nrow(all_jobs)) {
   promoted <- c(
     file.copy(

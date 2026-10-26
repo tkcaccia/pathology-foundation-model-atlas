@@ -13,6 +13,9 @@ models/*.rds
 models/foundation_models/*.rds
 models/matched_v04/*.rds
 models/matched_v04_smoke/*.rds
+releases/**/*.rds
+PathoFMPred.Rcheck/
+PathoFMPred_*.tar.gz
 manuscript/rendered/
 manuscript/rendered_*/
 manuscript/*montage*.png

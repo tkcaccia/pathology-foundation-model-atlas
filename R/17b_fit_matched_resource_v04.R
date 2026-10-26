@@ -15,8 +15,29 @@ models <- c("TITAN", "GigaSSL", "ProvGigaPath")
 cohorts <- setNames(lapply(models, function(model) readRDS(file.path(
   "data/processed", paste0("patient_cohort_exact_slides_", model, ".rds")
 ))), models)
+brca_models <- c("TITAN", "GigaSSL")
+brca_cohorts <- setNames(lapply(brca_models, function(model) readRDS(file.path(
+  "data/processed", paste0("patient_cohort_", model, ".rds")
+))), brca_models)
+brca_patients <- Reduce(intersect, lapply(brca_cohorts, function(x) {
+  x$meta$patient[x$meta$tumor_type == "BRCA"]
+}))
+if (length(brca_patients) != 1053L) stop("BRCA cohort overlap changed")
 screen <- fread("results/tables/foundation_model_matched_screen.csv")
 if (any(screen$fastPLS_version != "0.4")) stop("Primary screen is stale")
+screen[, cohort_scope := "three-way exact common slides"]
+brca_screen_file <- paste0(
+  "results/tables/foundation_model_matched_screen_common_patient_",
+  "BRCA_TITAN_GigaSSL_components_20.csv"
+)
+brca_screen <- fread(brca_screen_file)
+if (any(brca_screen$fastPLS_version != "0.4") ||
+    !all(brca_screen$tumor_type == "BRCA") ||
+    !setequal(brca_screen$foundation_model, brca_models)) {
+  stop("BRCA two-representation screen is stale or incomplete")
+}
+brca_screen[, cohort_scope := "BRCA TITAN/Giga-SSL common slides"]
+screen <- rbindlist(list(screen, brca_screen), use.names = TRUE, fill = TRUE)
 screen[, effect := fifelse(outcome_type == "continuous", q2, auc)]
 screen[, effect_crossing := effect >= fifelse(outcome_type == "continuous",
                                              0.20, 0.60)]
@@ -44,15 +65,26 @@ resource_fingerprint <- digest::digest(list(
   cohorts = vapply(cohorts, `[[`, character(1), "source_sha256"),
   fastPLS_version = as.character(packageVersion("fastPLS"))
 ), algo = "sha256")
+brca_resource_fingerprint <- digest::digest(list(
+  matched_resource_fingerprint = resource_fingerprint,
+  brca_screen = digest::digest(file = brca_screen_file, algo = "sha256"),
+  cohorts = vapply(brca_cohorts, `[[`, character(1), "source_sha256"),
+  patients = sort(brca_patients)
+), algo = "sha256")
 
 fit_one <- function(index) {
   set_model_rng_kind()
   job <- jobs[index]
-  cohort <- cohorts[[job$foundation_model]]
+  is_brca <- identical(job$tumor_type, "BRCA")
+  cohort <- if (is_brca) brca_cohorts[[job$foundation_model]] else
+    cohorts[[job$foundation_model]]
+  job_fingerprint <- if (is_brca) brca_resource_fingerprint else
+    resource_fingerprint
   source <- if (job$outcome_type == "continuous") continuous else binary
   d <- source[family == job$family & tumor_type == job$tumor_type &
                 endpoint == job$endpoint & source == job$source]
-  d <- d[patient %chin% rownames(cohort$X)]
+  eligible_patients <- if (is_brca) brca_patients else rownames(cohort$X)
+  d <- d[patient %chin% eligible_patients]
   d <- if (job$outcome_type == "continuous") d[is.finite(value)] else
     d[value %in% c(0L, 1L)]
   setorder(d, patient)
@@ -71,7 +103,7 @@ fit_one <- function(index) {
   cached <- if (file.exists(path)) tryCatch(readRDS(path), error = function(e) NULL)
     else NULL
   if (!is.null(cached) && identical(cached$resource_fingerprint,
-                                     resource_fingerprint)) {
+                                     job_fingerprint)) {
     artifact <- cached
     ncomp <- as.integer(artifact$ncomp)
     threshold <- artifact$operating_threshold
@@ -100,7 +132,7 @@ fit_one <- function(index) {
     continuous_endpoint_transform(job$family, job$endpoint) else "none"
   artifact <- list(
     model = fitted, model_id = model_id,
-    resource_fingerprint = resource_fingerprint,
+    resource_fingerprint = job_fingerprint,
     foundation_model = job$foundation_model,
     outcome_type = job$outcome_type, family = job$family,
     cancer_type = job$tumor_type, endpoint = job$endpoint,
@@ -174,11 +206,15 @@ fit_one <- function(index) {
     binary_no_skill_pr_auc = job$no_skill_pr_auc,
     binary_operating_threshold = if (is.null(threshold)) NA_real_ else threshold,
     output_units = artifact$output_units,
-    primary_estimate_label = "patient-level nested out-of-fold estimate on exact common slides",
+    primary_estimate_label = if (is_brca)
+      "patient-level nested out-of-fold estimate on matched BRCA slides" else
+      "patient-level nested out-of-fold estimate on exact common slides",
     repeated_estimate_label = "alternative matched partitions reported separately",
     representation_effect_threshold_crossing = TRUE,
     matched_representation_effect_threshold_crossing = TRUE,
-    resource_selection_basis = "representation-specific matched effect-threshold crossing",
+    resource_selection_basis = if (is_brca)
+      "BRCA two-representation effect-threshold crossing" else
+      "representation-specific three-way matched effect-threshold crossing",
     representation_specific_qualification =
       "descriptive effect-threshold crossing; no permutation/FDR claim",
     primary_binary_metric = if (job$outcome_type == "binary") "AUROC" else NA_character_,
@@ -303,7 +339,13 @@ setorder(registry, foundation_model, cancer_type, outcome_type, family,
          endpoint)
 fwrite(registry, file.path(out_dir, "model_registry.csv"))
 
-oof <- as.data.table(readRDS("results/predictions/foundation_model_matched_oof.rds"))
+oof <- rbindlist(list(
+  as.data.table(readRDS("results/predictions/foundation_model_matched_oof.rds")),
+  as.data.table(readRDS(paste0(
+    "results/predictions/foundation_model_matched_oof_common_patient_",
+    "BRCA_TITAN_GigaSSL_components_20.rds"
+  )))
+), use.names = TRUE, fill = TRUE)
 oof <- merge(oof, registry[, .(foundation_model, outcome_type, family,
                                tumor_type = cancer_type, endpoint, model_id)],
              by = c("foundation_model", "outcome_type", "family",

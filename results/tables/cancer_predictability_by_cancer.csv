@@ -1,0 +1,32 @@
+tumor_type,representation_coverage,eligible_pairs,crossing_pairs,cross_modal_crossings,directly_observed_crossings,binary_crossings,continuous_crossings
+ACC,all three,101,21,21,0,1,20
+BLCA,all three,150,55,54,11,17,38
+BRCA,TITAN and Giga-SSL only,139,72,71,13,21,51
+CESC,all three,125,26,25,4,9,17
+COAD,all three,134,48,47,13,24,24
+DLBC,all three,1,1,1,1,1,0
+ESCA,all three,116,11,11,1,8,3
+GBM,all three,111,27,27,1,4,23
+HNSC,all three,137,29,29,10,16,13
+KICH,all three,103,12,12,0,1,11
+KIRC,all three,119,41,41,4,7,34
+KIRP,all three,114,39,39,1,5,34
+LGG,all three,128,58,58,13,21,37
+LIHC,all three,126,63,63,6,11,52
+LUAD,all three,135,55,54,9,14,41
+LUSC,all three,137,35,34,4,7,28
+MESO,all three,106,10,10,0,1,9
+OV,all three,106,19,19,1,2,17
+PAAD,all three,121,37,36,3,7,30
+PCPG,all three,107,19,19,0,3,16
+PRAD,all three,121,23,22,4,9,14
+READ,all three,118,13,12,3,8,5
+SARC,all three,119,45,45,3,8,37
+SKCM,all three,111,12,11,1,2,10
+STAD,all three,138,59,58,16,27,32
+TGCT,all three,110,65,65,2,3,62
+THCA,all three,115,50,50,4,7,43
+THYM,all three,106,49,49,1,1,48
+UCEC,all three,170,71,70,38,48,23
+UCS,all three,102,9,9,1,2,7
+UVM,all three,2,2,2,2,2,0

@@ -18,6 +18,10 @@ if (!setequal(unique(registry$foundation_model), models) ||
     anyDuplicated(registry$model_id)) {
   stop("The matched registry is incomplete or contains duplicate model IDs")
 }
+if (registry[cancer_type == "BRCA", .N] != 125L ||
+    registry[cancer_type == "BRCA" & foundation_model == "ProvGigaPath", .N] != 0L) {
+  stop("Private registry does not contain the expected TITAN/Giga-SSL BRCA models")
+}
 for (model in models) {
   rows <- registry[foundation_model == model]
   paths <- file.path(root, rows$file)
@@ -47,12 +51,15 @@ for (model in models) {
     data_audit = list(
       matched_patients = 8241L,
       matched_slide_identifiers = 10165L,
+      additional_brca_patients = if (model == "ProvGigaPath") 0L else 1053L,
       aggregation = "mean"
     ),
     provenance = list(
-      analysis = "exact-common-slide matched TCGA benchmark",
+      analysis = paste0("exact-common-slide three-way TCGA benchmark",
+                        if (model == "ProvGigaPath") "" else
+                          " plus matched TITAN/Giga-SSL BRCA extension"),
       fastPLS_version = "0.4",
-      selection = "representation-specific Q2 >= 0.20 or AUROC >= 0.60",
+      selection = "cancer-specific Q2 >= 0.20 or AUROC >= 0.60 in the available representation",
       external_validation = FALSE,
       contains_feature_rows = FALSE,
       contains_outcome_rows = FALSE,

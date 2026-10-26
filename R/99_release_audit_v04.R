@@ -71,15 +71,41 @@ if (file.exists("results/tables/foundation_model_tss_grouped_sensitivity.csv")) 
 registry_file <- "models/matched_v04/model_registry.csv"
 if (file.exists(registry_file)) {
   registry <- fread(registry_file)
-  expected <- primary[
+  registry_keys <- copy(registry)
+  setnames(registry_keys, "cancer_type", "tumor_type")
+  brca <- read_table(paste0(
+    "foundation_model_matched_screen_common_patient_",
+    "BRCA_TITAN_GigaSSL_components_20.csv"
+  ))
+  if (!setequal(unique(brca$foundation_model), c("TITAN", "GigaSSL")) ||
+      !identical(unique(brca$tumor_type), "BRCA") ||
+      any(brca$fastPLS_version != "0.4")) {
+    stop("BRCA two-representation screen is incomplete or stale")
+  }
+  expected <- rbindlist(list(primary, brca), use.names = TRUE, fill = TRUE)[
     (outcome_type == "continuous" & q2 >= 0.20) |
       (outcome_type == "binary" & auc >= 0.60)
   ]
   if (nrow(registry) != nrow(expected) ||
       !setequal(unique(registry$foundation_model), models) ||
-      any(registry$fastPLS_version != "0.4")) {
+      any(registry$fastPLS_version != "0.4") ||
+      anyDuplicated(registry_keys, by = c(keys, "foundation_model")) ||
+      !setequal(
+        registry_keys[, do.call(paste, c(.SD, sep = "|")),
+                 .SDcols = c(keys, "foundation_model")],
+        expected[, do.call(paste, c(.SD, sep = "|")),
+                 .SDcols = c(keys, "foundation_model")]
+      )) {
     stop("Fitted-model registry does not match the descriptive candidate set")
   }
+}
+
+catalogue <- read_table("cancer_predictability_catalogue_all_eligible.csv")
+if (nrow(catalogue) != 3528L ||
+    uniqueN(catalogue$tumor_type) != 31L ||
+    sum(catalogue$any_effect_crossing) != 1076L ||
+    sum(catalogue$any_effect_crossing & !catalogue$same_histology_modality) != 1064L) {
+  stop("The 31-cancer feature catalogue does not reconcile")
 }
 
 public_models <- list.files("../PathoFMPred-public/inst/models", pattern = "\\.rds$",
@@ -89,5 +115,7 @@ if (any(grepl("titan|pathofmpred_(gigassl|provgigapath)\\.rds$",
   stop("A fitted TCGA collection is present in the public package")
 }
 
-cat("Matched release audit passed:", nrow(task_n), "paired tasks and",
-    nrow(primary), "representation-task results under fastPLS 0.4.\n")
+cat("Release audit passed:", nrow(task_n), "three-way paired tasks,",
+    nrow(catalogue), "eligible 31-cancer tasks and",
+    sum(catalogue$any_effect_crossing),
+    "descriptive effect-threshold crossings under fastPLS 0.4.\n")
