@@ -12,7 +12,7 @@ document = Document(source)
 replacements = {
     9: "26 October 2026",
     10: ("Manuscript: Cancer-specific prediction of genomic and immune-related "
-         "features from pathology slide representations across 32 TCGA cancers"),
+         "features from pathology slide representations across TCGA cancers"),
     12: ("We are pleased to submit this manuscript as a Research Article for "
          "consideration in Journal of Translational Medicine. We used published "
          "TITAN, Giga-SSL and Prov-GigaPath slide representations to identify "

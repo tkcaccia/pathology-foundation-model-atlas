@@ -59,7 +59,7 @@ def edit_main():
     doc = Document(MAIN_IN)
     put_text(doc.paragraphs[0],
              "Cancer-specific prediction of genomic and immune-related features "
-             "from pathology slide representations across 32 TCGA cancers")
+             "from pathology slide representations across TCGA cancers")
 
     put_text(find(doc, "Background. Haematoxylin"),
              "Background. Haematoxylin-and-eosin (H&E) slides contain visual clues "
