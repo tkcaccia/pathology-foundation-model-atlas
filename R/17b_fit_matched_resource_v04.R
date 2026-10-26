@@ -23,6 +23,10 @@ brca_patients <- Reduce(intersect, lapply(brca_cohorts, function(x) {
   x$meta$patient[x$meta$tumor_type == "BRCA"]
 }))
 if (length(brca_patients) != 1053L) stop("BRCA cohort overlap changed")
+chol_patients <- Reduce(intersect, lapply(cohorts, function(x) {
+  x$meta$patient[x$meta$tumor_type == "CHOL"]
+}))
+if (length(chol_patients) != 38L) stop("CHOL cohort overlap changed")
 screen <- fread("results/tables/foundation_model_matched_screen.csv")
 if (any(screen$fastPLS_version != "0.4")) stop("Primary screen is stale")
 screen[, cohort_scope := "three-way exact common slides"]
@@ -37,7 +41,20 @@ if (any(brca_screen$fastPLS_version != "0.4") ||
   stop("BRCA two-representation screen is stale or incomplete")
 }
 brca_screen[, cohort_scope := "BRCA TITAN/Giga-SSL common slides"]
-screen <- rbindlist(list(screen, brca_screen), use.names = TRUE, fill = TRUE)
+chol_screen_file <- paste0(
+  "results/tables/foundation_model_matched_screen_exact_common_slide_",
+  "CHOL_components_20.csv"
+)
+chol_screen <- fread(chol_screen_file)
+if (any(chol_screen$fastPLS_version != "0.4") ||
+    !identical(unique(chol_screen$tumor_type), "CHOL") ||
+    !setequal(chol_screen$foundation_model, models) ||
+    uniqueN(chol_screen[, .(outcome_type, family, endpoint)]) != 109L) {
+  stop("CHOL exception screen is stale or incomplete")
+}
+chol_screen[, cohort_scope := "CHOL exploratory three-way exact common slides"]
+screen <- rbindlist(list(screen, brca_screen, chol_screen),
+                    use.names = TRUE, fill = TRUE)
 screen[, effect := fifelse(outcome_type == "continuous", q2, auc)]
 screen[, effect_crossing := effect >= fifelse(outcome_type == "continuous",
                                              0.20, 0.60)]
@@ -71,19 +88,27 @@ brca_resource_fingerprint <- digest::digest(list(
   cohorts = vapply(brca_cohorts, `[[`, character(1), "source_sha256"),
   patients = sort(brca_patients)
 ), algo = "sha256")
+chol_resource_fingerprint <- digest::digest(list(
+  matched_resource_fingerprint = resource_fingerprint,
+  chol_screen = digest::digest(file = chol_screen_file, algo = "sha256"),
+  patients = sort(chol_patients),
+  eligibility = "CHOL only: continuous n >= 10; binary n >= 10 per class"
+), algo = "sha256")
 
 fit_one <- function(index) {
   set_model_rng_kind()
   job <- jobs[index]
   is_brca <- identical(job$tumor_type, "BRCA")
+  is_chol <- identical(job$tumor_type, "CHOL")
   cohort <- if (is_brca) brca_cohorts[[job$foundation_model]] else
     cohorts[[job$foundation_model]]
-  job_fingerprint <- if (is_brca) brca_resource_fingerprint else
-    resource_fingerprint
+  job_fingerprint <- if (is_brca) brca_resource_fingerprint else if (is_chol)
+    chol_resource_fingerprint else resource_fingerprint
   source <- if (job$outcome_type == "continuous") continuous else binary
   d <- source[family == job$family & tumor_type == job$tumor_type &
                 endpoint == job$endpoint & source == job$source]
-  eligible_patients <- if (is_brca) brca_patients else rownames(cohort$X)
+  eligible_patients <- if (is_brca) brca_patients else if (is_chol)
+    chol_patients else rownames(cohort$X)
   d <- d[patient %chin% eligible_patients]
   d <- if (job$outcome_type == "continuous") d[is.finite(value)] else
     d[value %in% c(0L, 1L)]
@@ -207,13 +232,15 @@ fit_one <- function(index) {
     binary_operating_threshold = if (is.null(threshold)) NA_real_ else threshold,
     output_units = artifact$output_units,
     primary_estimate_label = if (is_brca)
-      "patient-level nested out-of-fold estimate on matched BRCA slides" else
+      "patient-level nested out-of-fold estimate on matched BRCA slides" else if
+      (is_chol) "exploratory patient-level nested out-of-fold estimate on 38 matched CHOL patients" else
       "patient-level nested out-of-fold estimate on exact common slides",
     repeated_estimate_label = "alternative matched partitions reported separately",
     representation_effect_threshold_crossing = TRUE,
     matched_representation_effect_threshold_crossing = TRUE,
     resource_selection_basis = if (is_brca)
-      "BRCA two-representation effect-threshold crossing" else
+      "BRCA two-representation effect-threshold crossing" else if (is_chol)
+      "CHOL-only exploratory eligibility exception and descriptive crossing" else
       "representation-specific three-way matched effect-threshold crossing",
     representation_specific_qualification =
       "descriptive effect-threshold crossing; no permutation/FDR claim",
@@ -344,6 +371,10 @@ oof <- rbindlist(list(
   as.data.table(readRDS(paste0(
     "results/predictions/foundation_model_matched_oof_common_patient_",
     "BRCA_TITAN_GigaSSL_components_20.rds"
+  ))),
+  as.data.table(readRDS(paste0(
+    "results/predictions/foundation_model_matched_oof_exact_common_slide_",
+    "CHOL_components_20.rds"
   )))
 ), use.names = TRUE, fill = TRUE)
 oof <- merge(oof, registry[, .(foundation_model, outcome_type, family,

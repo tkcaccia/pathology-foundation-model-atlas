@@ -21,8 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 FOLDER = Path(os.environ.get("JTM_DIR", Path.home() / "Desktop/JTM"))
 MAIN_IN = FOLDER / "manuscript_JTM.docx"
 SUPP_IN = FOLDER / "supplementary_material_JTM.docx"
-MAIN_OUT = FOLDER / "manuscript_JTM_31_cancer_atlas.docx"
-SUPP_OUT = FOLDER / "supplementary_material_JTM_31_cancer_atlas.docx"
+MAIN_OUT = FOLDER / "manuscript_JTM_32_cancer_atlas.docx"
+SUPP_OUT = FOLDER / "supplementary_material_JTM_32_cancer_atlas.docx"
 FIGURE2 = ROOT / "figures/Figure2_cancer_feature_map.png"
 CATALOGUE = ROOT / "results/tables/cancer_predictability_catalogue_crossings.csv"
 
@@ -48,9 +48,10 @@ def put_text(paragraph, text: str):
 def read_catalogue():
     with CATALOGUE.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
-    assert len(rows) == 1076
+    assert len(rows) == 1084
     assert sum(row["tumor_type"] == "BRCA" for row in rows) == 72
-    assert sum(row["same_histology_modality"].upper() == "FALSE" for row in rows) == 1064
+    assert sum(row["tumor_type"] == "CHOL" for row in rows) == 8
+    assert sum(row["same_histology_modality"].upper() == "FALSE" for row in rows) == 1072
     return rows
 
 
@@ -58,7 +59,7 @@ def edit_main():
     doc = Document(MAIN_IN)
     put_text(doc.paragraphs[0],
              "Cancer-specific prediction of genomic and immune-related features "
-             "from pathology slide representations across 31 TCGA cancers")
+             "from pathology slide representations across 32 TCGA cancers")
 
     put_text(find(doc, "Background. Haematoxylin"),
              "Background. Haematoxylin-and-eosin (H&E) slides contain visual clues "
@@ -71,6 +72,8 @@ def edit_main():
              "representations. Breast cancer was analysed separately in 1,053 "
              "patients with matched TITAN and Giga-SSL representations because "
              "the released Prov-GigaPath data contain no breast-cancer slides. "
+             "Cholangiocarcinoma was examined in a separate exploratory analysis "
+             "using all three representations and a small-cohort eligibility exception. "
              "Within each cancer, patient-level nested cross-validation evaluated "
              "continuous outcomes by held-out Q² and binary outcomes by area "
              "under the receiver operating characteristic curve (AUROC). "
@@ -78,21 +81,24 @@ def edit_main():
              "features for follow-up.")
     put_text(find(doc, "Results. For molecular"),
              "Results. At least one available representation met a follow-up "
-             "cutoff for 1,076 cancer-feature pairs across 31 cancers. Twelve "
-             "pairs used an H&E-derived reference, leaving 1,064 cross-modal "
+             "cutoff for 1,084 cancer-feature pairs across 32 cancers. Twelve "
+             "pairs used an H&E-derived reference, leaving 1,072 cross-modal "
              "pairs. Direct alteration results included cancer-specific mutations, "
              "fusions and genomic-context states. In breast cancer, 21 binary and "
              "51 continuous features met a cutoff with TITAN or Giga-SSL; CDH1 "
              "mutation reached AUROC 0.895 and 0.835, respectively. The three-way "
              "comparison showed that the strongest representation varied by "
-             "feature. The PathoFMPred R package applies fitted cancer-specific "
+             "feature. Eight CHOL features crossed a cutoff, although its small "
+             "cohort makes these estimates exploratory. The PathoFMPred R package "
+             "applies fitted cancer-specific "
              "models and offers a separate, user-initiated download of the "
              "Prov-GigaPath collection.")
     put_text(find(doc, "Conclusions. Histology captured"),
              "Conclusions. The atlas identifies cancer-specific genomic and "
              "immune-related reference features that merit independent testing. "
-             "PathoFMPred makes the corresponding research models usable without "
-             "embedding them in the package. All reported performance remains "
+             "The PathoFMPred R package provides a common interface for the "
+             "research models, with the Prov-GigaPath collection available "
+             "separately. All reported performance remains "
              "internal to TCGA and does not establish clinical validity.")
 
     put_text(find(doc, "We asked which tumour features"),
@@ -103,16 +109,18 @@ def edit_main():
              "and slides where all three were available. We also analysed breast "
              "cancer with TITAN and Giga-SSL, so that the absence of breast-cancer "
              "slides from the released Prov-GigaPath data did not remove that "
-             "disease from the atlas. The PathoFMPred R package exposes the "
+             "disease from the atlas. A small-cohort exception allowed a separate "
+             "exploratory analysis of cholangiocarcinoma with all three "
+             "representations. The PathoFMPred R package exposes the "
              "resulting cancer-specific models for research use.")
 
     cohort = find(doc, "The released datasets contained")
     cohort.add_run(
         " Breast cancer was evaluated in 1,053 patients with identical "
         "TITAN and Giga-SSL slide sets; the Prov-GigaPath release contained "
-        "no BRCA slides. Cholangiocarcinoma was represented in the source "
-        "releases but did not meet the existing minimum labelled-sample or "
-        "binary-class requirements."
+        "no BRCA slides. In cholangiocarcinoma, 38 patients had common slide "
+        "representations and at most 36 had a reference outcome. Acute myeloid "
+        "leukaemia was absent from all three released slide datasets."
     )
     method = find(doc, "Each cancer-endpoint pair was modelled")
     put_text(method,
@@ -127,7 +135,13 @@ def edit_main():
              "selection were confined to each training fold. Inner out-of-fold "
              "root-mean-squared error selected components for continuous "
              "outcomes; pooled inner out-of-fold AUROC selected them for binary "
-             "outcomes. Ties were resolved in favour of fewer components.")
+             "outcomes. Ties were resolved in favour of fewer components. "
+             "The usual eligibility rules remained 50 labelled patients for "
+             "continuous outcomes and 20 patients per binary class. For CHOL "
+             "alone, the limits were 10 labelled patients for continuous "
+             "outcomes and 10 patients in each binary class; all other model "
+             "development and validation rules remained the same. We treated "
+             "the CHOL results as exploratory because of the small cohort.")
 
     put_text(find(doc, "Matched cohort and slide representations"),
              "Cohort coverage and slide representations")
@@ -137,8 +151,9 @@ def edit_main():
              "2,963 continuous and 426 binary pairs. Every representation used "
              "the same 10,165 slide identifiers, outcomes, folds and tuning rules. "
              "The separate BRCA analysis added 139 eligible pairs in 1,053 "
-             "patients with matching TITAN and Giga-SSL slide sets. We therefore "
-             "report cancer-specific results for 31 cancers, while restricting "
+             "patients with matching TITAN and Giga-SSL slide sets. The CHOL "
+             "extension added 109 eligible pairs under the small-cohort exception. "
+             "We therefore report cancer-specific results for 32 cancers, while restricting "
              "direct three-way comparisons to the 30 cancers represented by "
              "all three releases.")
     paired = find(doc, "We first compared paired Q²")
@@ -149,8 +164,8 @@ def edit_main():
     figure1 = find(doc, "Figure 1. Patient and slide overlap")
     figure1.add_run(
         " BRCA appears only in the TITAN and Giga-SSL releases and was "
-        "analysed separately with these two representations. CHOL did not "
-        "meet the outcome eligibility rules."
+        "analysed separately with these two representations. CHOL was examined "
+        "separately under an exploratory small-cohort eligibility exception."
     )
     put_text(find(doc, "The matched benchmark revealed"),
              "The cancer-specific atlas includes direct mutations and fusions, "
@@ -162,7 +177,7 @@ def edit_main():
              "genomic-context status crossed in 119 of 183 pairs with at least "
              "one representation. Table 1 describes these feature classes for "
              "the three-way comparison; Figure 2 shows their distribution "
-             "across all 31 analysed cancers.")
+             "across all 32 analysed cancers.")
     # Protect citations to the existing S5-S9 before adding the new inventory
     # at S5. The original S5-S9 tables become S6-S10.
     for paragraph in doc.paragraphs:
@@ -178,10 +193,10 @@ def edit_main():
 
     overall = find(doc, "At least one representation crossed")
     put_text(overall,
-             "Across the 31-cancer atlas, at least one available representation "
-             "crossed the descriptive threshold for 1,076 of 3,528 eligible "
+             "Across the 32-cancer atlas, at least one available representation "
+             "crossed the descriptive threshold for 1,084 of 3,637 eligible "
              "cancer-feature pairs. Twelve used an H&E-derived TIL reference. "
-             "The remaining 1,064 pairs concern independently derived genomic, "
+             "The remaining 1,072 pairs concern independently derived genomic, "
              "transcriptomic or immune-related reference phenotypes. A crossing "
              "is a task-level screening result, not an independent biological "
              "discovery. Supplementary Table S5 lists every crossing by cancer, "
@@ -203,31 +218,52 @@ def edit_main():
         "because its released TCGA embeddings contain no BRCA slides."
     )
     brca.style = feature_paragraph.style
+    chol = insert_after(brca,
+        "In the 38-patient CHOL slide intersection, at most 36 patients had "
+        "a reference outcome. The CHOL-only eligibility exception admitted "
+        "107 continuous and two binary cancer-feature pairs. Eight pairs "
+        "crossed a descriptive cutoff in at least one representation: one "
+        "cell-cycle pathway alteration, three RNA pathway scores and four "
+        "published immune-related scores. The RNA-derived PI3K-AKT-mTOR "
+        "Hallmark score reached Q² 0.401 with TITAN. TITAN and Prov-GigaPath "
+        "reached AUROC 0.641 and 0.635 for the cell-cycle alteration. No "
+        "CHOL mutation pair met the exception's 10-per-class requirement. "
+        "These estimates require confirmation in a larger independent cohort."
+    )
+    chol.style = feature_paragraph.style
     table1 = find(doc, "Table 1. Tumour-feature classes")
     put_text(table1,
              "Table 1. Descriptive effect-threshold crossings by feature class "
              "in the 30-cancer, three-representation comparison. Percentages "
-             "use eligible cancer-feature pairs within each class. Counts "
+             "use eligible cancer-feature pairs within each class; the number "
+             "after each semicolon counts distinct feature definitions. Counts "
              "depend on the catalogue and are not independent discoveries. "
-             "The BRCA two-representation results appear in Supplementary Table S5.")
+             "The BRCA and exploratory CHOL results appear in Supplementary Table S5.")
+    table1.paragraph_format.keep_together = True
+    table1.paragraph_format.keep_with_next = True
     figure2 = find(doc, "Figure 2. Tumour-feature classes")
     put_text(figure2,
              "Figure 2. Cancer-specific features reaching a descriptive cutoff "
-             "with at least one available slide representation. Each cell gives "
+             "with at least one available slide representation across 32 cancers. Each cell gives "
              "the number of crossing cancer-feature pairs; colour shows the "
              "percentage of eligible pairs in that class. The cutoff was "
              "Q² at least 0.20 for continuous outcomes and AUROC at least 0.60 "
              "for binary outcomes. The BRCA row uses TITAN and Giga-SSL only. "
+             "The CHOL row uses a small-cohort exception and is exploratory. "
              "Twelve pairs based on an H&E-derived TIL reference are omitted "
              "from this cross-modal display. Full feature names and scores "
              "appear in Supplementary Table S5.")
     image_para = figure2._p.getprevious()
-    # Replace the obsolete multi-panel Figure 2 with a 31-cancer feature map.
+    # Replace the obsolete multi-panel Figure 2 with a 32-cancer feature map.
     for drawing in image_para.xpath(".//w:drawing"):
         drawing.getparent().remove(drawing)
     from docx.text.paragraph import Paragraph
     image_p = Paragraph(image_para, figure2._parent)
     image_p.add_run().add_picture(str(FIGURE2), width=Inches(6.5))
+    figure3 = find(doc, "Figure 3. Leading slide representation")
+    figure3.text = figure3.text.replace(
+        "The analysis includes 993", "The 30-cancer matched analysis includes 993"
+    )
 
     discussion = find(doc, "Representation choice depended")
     discussion.add_run(
@@ -236,6 +272,12 @@ def edit_main():
         "Giga-SSL each supplied cancer-specific models for mutations and "
         "derived tissue phenotypes. A missing representation should not "
         "be mistaken for a negative result in that cancer."
+    )
+    discussion.add_run(
+        " CHOL illustrates a different boundary. All three slide "
+        "representations were available, but the usual outcome denominators "
+        "were too small. Its exploratory results involve derived phenotypes "
+        "and a cell-cycle pathway label, not a CHOL mutation model."
     )
     put_text(find(doc, "Arslan et al. previously screened"),
              "Arslan et al. previously screened multi-omic biomarkers across "
@@ -249,7 +291,7 @@ def edit_main():
              "Molecular assays may differ from the reference labels used here, "
              "especially for computationally inferred immune phenotypes.")
     put_text(find(doc, "Across 30 jointly represented"),
-             "Across 31 TCGA cancers, the available pathology slide "
+             "Across 32 TCGA cancers, the available pathology slide "
              "representations captured cancer-specific associations with "
              "mutations, fusions, microsatellite instability, genomic-context "
              "states and selected immune-related reference phenotypes. "
@@ -269,7 +311,7 @@ def edit_main():
              "The public Prov-GigaPath collection contains no patient rows, "
              "slide embeddings or patient-level prediction-reference scores.")
     put_text(find(doc, "Additional file 1: supplementary_material_JTM.docx"),
-             "Additional file 1: supplementary_material_JTM_31_cancer_atlas.docx. "
+             "Additional file 1: supplementary_material_JTM_32_cancer_atlas.docx. "
              "Contains the Supplementary Methods, Tables S1-S10 and Figures S1-S4.")
 
     contributions = find(doc, "Aamilah Ismail: Data curation")
@@ -320,12 +362,16 @@ def add_table_s5(doc, rows):
     following._p.addprevious(heading._p)
     note = doc.add_paragraph(
         "The table includes every crossing feature in the 30-cancer three-way "
-        "comparison and in the two-representation BRCA analysis. Binary rows "
+        "comparison, the two-representation BRCA analysis and the exploratory "
+        "CHOL exception. Binary rows "
         "show AUROC and continuous rows show Q². An asterisk marks a model "
         "that met AUROC 0.60 or Q² 0.20; unmarked values are shown for context. "
         "For binary features, n is followed by the number of positive cases. "
         "Prov-GigaPath is unavailable for BRCA. The twelve rows marked † use "
         "an H&E-derived TIL reference and are not cross-modal outcomes. "
+        "CHOL required at least 10 labelled patients for continuous outcomes "
+        "and 10 per binary class instead of the usual 50 and 20 per class. "
+        "Its results are exploratory. "
         "These are descriptive nested patient-level estimates, not "
         "permutation- or FDR-qualified findings."
     )
@@ -374,7 +420,7 @@ def add_table_s5(doc, rows):
         for cell, value, width in zip(cells, values, widths):
             cell.text = value
             cell.width = Inches(width)
-        if cancer == "BRCA":
+        if cancer in ("BRCA", "CHOL"):
             for run in cells[0].paragraphs[0].runs:
                 run.bold = True
 
@@ -394,7 +440,20 @@ def edit_supplement(rows):
     doc = Document(SUPP_IN)
     find(doc, "PathoFMPred applies fitted models").add_run(
         " The cancer-specific inventory includes a separate BRCA analysis "
-        "based on the two available slide representations."
+        "based on the two available slide representations, and an exploratory "
+        "CHOL analysis using all three representations."
+    )
+    insert_after(find(doc, "The matched atlas used"),
+        "The standard outcome-eligibility limits were retained in the "
+        "30-cancer matched analysis and the BRCA extension. CHOL was analysed "
+        "separately because only 38 patients had all three slide "
+        "representations and no outcome had more than 36 labelled patients. "
+        "For CHOL alone, continuous endpoints needed at least 10 finite "
+        "patient values and binary endpoints needed at least 10 patients in "
+        "each class. Five-fold nested patient-level cross-validation, training-only "
+        "component selection, outcome definitions and descriptive effect "
+        "cutoffs were otherwise unchanged. These CHOL estimates are "
+        "exploratory; all CHOL fitted models fall in the smaller-sample stratum."
     )
     # Sequentially renumber the pre-existing summary tables after the new S5.
     for old in range(9, 4, -1):
@@ -406,7 +465,8 @@ def edit_supplement(rows):
     final.add_run(
         " Supplementary Table S5 gives the full cancer-by-feature inventory "
         "under the same descriptive cutoffs; it includes BRCA where only "
-        "TITAN and Giga-SSL data were available."
+        "TITAN and Giga-SSL data were available and CHOL under its small-cohort "
+        "eligibility exception."
     )
     for paragraph in doc.paragraphs:
         for run in paragraph.runs:

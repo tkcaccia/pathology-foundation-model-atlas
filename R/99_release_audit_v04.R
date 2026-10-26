@@ -77,12 +77,23 @@ if (file.exists(registry_file)) {
     "foundation_model_matched_screen_common_patient_",
     "BRCA_TITAN_GigaSSL_components_20.csv"
   ))
+  chol <- read_table(paste0(
+    "foundation_model_matched_screen_exact_common_slide_",
+    "CHOL_components_20.csv"
+  ))
   if (!setequal(unique(brca$foundation_model), c("TITAN", "GigaSSL")) ||
       !identical(unique(brca$tumor_type), "BRCA") ||
       any(brca$fastPLS_version != "0.4")) {
     stop("BRCA two-representation screen is incomplete or stale")
   }
-  expected <- rbindlist(list(primary, brca), use.names = TRUE, fill = TRUE)[
+  if (!setequal(unique(chol$foundation_model), models) ||
+      !identical(unique(chol$tumor_type), "CHOL") ||
+      any(chol$fastPLS_version != "0.4") ||
+      uniqueN(chol[, .(outcome_type, family, endpoint)]) != 109L) {
+    stop("CHOL exception screen is incomplete or stale")
+  }
+  expected <- rbindlist(list(primary, brca, chol),
+                        use.names = TRUE, fill = TRUE)[
     (outcome_type == "continuous" & q2 >= 0.20) |
       (outcome_type == "binary" & auc >= 0.60)
   ]
@@ -101,11 +112,11 @@ if (file.exists(registry_file)) {
 }
 
 catalogue <- read_table("cancer_predictability_catalogue_all_eligible.csv")
-if (nrow(catalogue) != 3528L ||
-    uniqueN(catalogue$tumor_type) != 31L ||
-    sum(catalogue$any_effect_crossing) != 1076L ||
-    sum(catalogue$any_effect_crossing & !catalogue$same_histology_modality) != 1064L) {
-  stop("The 31-cancer feature catalogue does not reconcile")
+if (nrow(catalogue) != 3637L ||
+    uniqueN(catalogue$tumor_type) != 32L ||
+    sum(catalogue$any_effect_crossing) != 1084L ||
+    sum(catalogue$any_effect_crossing & !catalogue$same_histology_modality) != 1072L) {
+  stop("The 32-cancer feature catalogue does not reconcile")
 }
 
 public_models <- list.files("../PathoFMPred-public/inst/models", pattern = "\\.rds$",
@@ -116,6 +127,6 @@ if (any(grepl("titan|pathofmpred_(gigassl|provgigapath)\\.rds$",
 }
 
 cat("Release audit passed:", nrow(task_n), "three-way paired tasks,",
-    nrow(catalogue), "eligible 31-cancer tasks and",
+    nrow(catalogue), "eligible 32-cancer tasks and",
     sum(catalogue$any_effect_crossing),
     "descriptive effect-threshold crossings under fastPLS 0.4.\n")

@@ -36,9 +36,10 @@ counts[, label := fifelse(crossing == 0L, "", as.character(crossing))]
 counts[, feature_class := factor(feature_class, levels = order_class)]
 counts[, tumor_type := factor(tumor_type,
                              levels = rev(sort(unique(tumor_type))))]
-if (uniqueN(counts$tumor_type) != 31L ||
-    sum(counts$crossing) != 1064L ||
-    counts[tumor_type == "BRCA", sum(crossing)] != 71L) {
+if (uniqueN(counts$tumor_type) != 32L ||
+    sum(counts$crossing) != 1072L ||
+    counts[tumor_type == "BRCA", sum(crossing)] != 71L ||
+    counts[tumor_type == "CHOL", sum(crossing)] != 8L) {
   stop("The cancer-feature map does not reconcile with the catalogue")
 }
 
@@ -53,7 +54,7 @@ figure <- ggplot(counts, aes(feature_class, tumor_type, fill = rate)) +
     name = "Eligible pairs\nreaching cutoff (%)"
   ) +
   labs(
-    title = "Cancer-specific features detectable from pathology slides",
+    title = "Cancer-specific outcomes reaching descriptive cutoffs",
     subtitle = "Number of outcomes reaching a descriptive cutoff with any available representation",
     x = NULL, y = NULL
   ) +
@@ -73,6 +74,6 @@ figure <- ggplot(counts, aes(feature_class, tumor_type, fill = rate)) +
 for (path in c("figures/Figure2_cancer_feature_map.png",
                "results/figures/Figure2_cancer_feature_map.png")) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  ggsave(path, figure, width = 10.4, height = 9.8, dpi = 300, bg = "white")
+  ggsave(path, figure, width = 10.4, height = 10.1, dpi = 300, bg = "white")
 }
 fwrite(counts, "results/tables/cancer_feature_map_counts.csv")

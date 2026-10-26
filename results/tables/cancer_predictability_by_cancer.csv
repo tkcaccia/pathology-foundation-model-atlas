@@ -3,6 +3,7 @@ ACC,all three,101,21,21,0,1,20
 BLCA,all three,150,55,54,11,17,38
 BRCA,TITAN and Giga-SSL only,139,72,71,13,21,51
 CESC,all three,125,26,25,4,9,17
+CHOL,all three,109,8,8,0,1,7
 COAD,all three,134,48,47,13,24,24
 DLBC,all three,1,1,1,1,1,0
 ESCA,all three,116,11,11,1,8,3

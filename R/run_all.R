@@ -23,6 +23,15 @@ run_r_brca <- function() {
   )
   if (!identical(status, 0L)) stop("BRCA extension failed")
 }
+run_r_chol <- function() {
+  script <- "R/16_compare_foundation_models.R"
+  message("Running the CHOL-only exploratory eligibility extension")
+  status <- system2(
+    file.path(R.home("bin"), "Rscript"), script,
+    env = c("FMPRED_CANCERS=CHOL", "FMPRED_MAX_COMPONENTS=20")
+  )
+  if (!identical(status, 0L)) stop("CHOL extension failed")
+}
 run_python <- function(script) {
   python <- Sys.which("python3")
   if (!nzchar(python)) stop("python3 is required for ", script)
@@ -73,6 +82,7 @@ for (script in scripts) {
   run_r(script)
   if (identical(script, "R/16_compare_foundation_models.R")) {
     run_r_brca()
+    run_r_chol()
     run_r("R/22_build_cancer_predictability_catalog.R")
     run_r("R/23_make_cancer_feature_map.R")
   }
@@ -100,4 +110,4 @@ if (nzchar(private_package)) {
 
 run_r("R/99_release_audit_v04.R")
 
-message("The 31-cancer atlas finished. Manuscript generation and package checks are separate audited release steps.")
+message("The 32-cancer atlas finished. Manuscript generation and package checks are separate audited release steps.")

@@ -24,6 +24,7 @@ if (!length(model_names) || anyDuplicated(model_names) ||
 cancer_filter <- trimws(strsplit(Sys.getenv("FMPRED_CANCERS", ""),
                                ",", fixed = TRUE)[[1L]])
 cancer_filter <- cancer_filter[nzchar(cancer_filter)]
+chol_exception <- identical(cancer_filter, "CHOL")
 cohort_mode <- tolower(Sys.getenv("FMPRED_COHORT_MODE", "exact_common_slide"))
 if (!cohort_mode %in% c("common_patient", "exact_common_slide")) {
   stop("FMPRED_COHORT_MODE must be common_patient or exact_common_slide")
@@ -48,13 +49,16 @@ binary <- binary[patient %chin% common_patients]
 
 continuous_jobs <- continuous[, .(n = .N, sd = sd(value)),
   by = .(family, subfamily, tumor_type, endpoint, source)
-][n >= cfg$analysis$continuous_min_n & is.finite(sd) & sd > 0]
+][n >= fifelse(tumor_type == "CHOL" & chol_exception, 10L,
+                cfg$analysis$continuous_min_n) & is.finite(sd) & sd > 0]
 continuous_jobs[, outcome_type := "continuous"]
 binary_jobs <- binary[, .(
   n = .N, positive = sum(value == 1L), negative = sum(value == 0L)
 ), by = .(family, subfamily, tumor_type, endpoint, source)][
-  positive >= cfg$analysis$binary_min_positive &
-    negative >= cfg$analysis$binary_min_negative
+  positive >= fifelse(tumor_type == "CHOL" & chol_exception, 10L,
+                     cfg$analysis$binary_min_positive) &
+    negative >= fifelse(tumor_type == "CHOL" & chol_exception, 10L,
+                     cfg$analysis$binary_min_negative)
 ]
 binary_jobs[, outcome_type := "binary"]
 jobs <- rbindlist(list(continuous_jobs, binary_jobs), fill = TRUE)
@@ -211,6 +215,9 @@ run_job <- function(i) {
     endpoint = job$endpoint, source = job$source, n = nrow(d),
     positive = if (job$outcome_type == "binary") sum(y == "1") else NA_integer_,
     negative = if (job$outcome_type == "binary") sum(y == "0") else NA_integer_,
+    eligibility_rule = if (job$tumor_type == "CHOL")
+      "CHOL-only exploratory exception: continuous n >= 10; binary n >= 10 in each class" else
+      "continuous n >= 50; binary n >= 20 in each class",
     seed = seed, common_cohort = TRUE,
     fastPLS_version = as.character(packageVersion("fastPLS")),
     fastPLS_remote_sha = if (is.null(fastpls_description$RemoteSha)) NA_character_ else as.character(fastpls_description$RemoteSha)

@@ -26,6 +26,12 @@ CESC,RNA pathway,52,13,25,13
 CESC,Genomic score,6,0,0,""
 CESC,Inferred immune fraction,23,1,4.34782608695652,1
 CESC,RNA signature,10,2,20,2
+CHOL,Genomic status,2,1,50,1
+CHOL,Sequence burden,16,0,0,""
+CHOL,RNA pathway,52,3,5.76923076923077,3
+CHOL,Genomic score,6,1,16.6666666666667,1
+CHOL,Inferred immune fraction,23,1,4.34782608695652,1
+CHOL,RNA signature,10,2,20,2
 COAD,Genomic status,12,11,91.6666666666667,11
 COAD,Mutation or fusion,14,13,92.8571428571429,13
 COAD,Sequence burden,16,7,43.75,7

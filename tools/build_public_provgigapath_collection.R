@@ -19,10 +19,15 @@ if (!identical(object$foundation_model, "ProvGigaPath") ||
 screen <- fread("results/tables/foundation_model_matched_screen.csv")[
   foundation_model == "ProvGigaPath"
 ]
+chol_screen <- fread(paste0(
+  "results/tables/foundation_model_matched_screen_exact_common_slide_",
+  "CHOL_components_20.csv"
+))[foundation_model == "ProvGigaPath"]
+screen <- rbindlist(list(screen, chol_screen), use.names = TRUE, fill = TRUE)
 screen[, effect_crossing := fifelse(outcome_type == "binary",
                                    auc >= 0.60, q2 >= 0.20)]
 expected <- screen[effect_crossing == TRUE]
-if (nrow(expected) != 618L || nrow(object$registry) != nrow(expected) ||
+if (nrow(expected) != 620L || nrow(object$registry) != nrow(expected) ||
     !setequal(paste(expected$family, expected$tumor_type, expected$endpoint),
               paste(object$registry$family, object$registry$cancer_type,
                     object$registry$endpoint))) {
@@ -62,7 +67,7 @@ object$provenance$contains_patient_level_predictions <- FALSE
 dir.create(dirname(target_path), recursive = TRUE, showWarnings = FALSE)
 saveRDS(object, target_path, compress = "xz")
 reloaded <- readRDS(target_path)
-if (length(reloaded$models) != 618L ||
+if (length(reloaded$models) != 620L ||
     !is.null(reloaded$prediction_reference) ||
     !setequal(names(reloaded$models), reloaded$registry$model_id)) {
   stop("The exported collection failed the round-trip audit")

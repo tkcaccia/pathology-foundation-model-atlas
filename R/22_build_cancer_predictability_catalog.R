@@ -5,17 +5,26 @@ brca <- fread(paste0(
   "results/tables/foundation_model_matched_screen_common_patient_",
   "BRCA_TITAN_GigaSSL_components_20.csv"
 ))
+chol <- fread(paste0(
+  "results/tables/foundation_model_matched_screen_exact_common_slide_",
+  "CHOL_components_20.csv"
+))
 if (!all(as.character(matched$fastPLS_version) == "0.4") ||
-    !all(as.character(brca$fastPLS_version) == "0.4")) {
+    !all(as.character(brca$fastPLS_version) == "0.4") ||
+    !all(as.character(chol$fastPLS_version) == "0.4")) {
   stop("The cancer catalogue requires the fastPLS 0.4 screens")
 }
 if (any(matched$tumor_type == "BRCA") ||
-    !identical(sort(unique(brca$foundation_model)), c("GigaSSL", "TITAN"))) {
-  stop("Unexpected BRCA representation coverage")
+    any(matched$tumor_type == "CHOL") ||
+    !identical(sort(unique(brca$foundation_model)), c("GigaSSL", "TITAN")) ||
+    !identical(sort(unique(chol$foundation_model)),
+               c("GigaSSL", "ProvGigaPath", "TITAN")) ||
+    !identical(unique(chol$tumor_type), "CHOL")) {
+  stop("Unexpected BRCA or CHOL representation coverage")
 }
 
 keys <- c("outcome_type", "family", "tumor_type", "endpoint", "source")
-results <- rbindlist(list(matched, brca), use.names = TRUE, fill = TRUE)
+results <- rbindlist(list(matched, brca, chol), use.names = TRUE, fill = TRUE)
 if (anyDuplicated(results, by = c(keys, "foundation_model"))) {
   stop("Duplicate cancer-endpoint-representation result")
 }
@@ -23,9 +32,13 @@ results[, effect := fifelse(outcome_type == "binary", auc, q2)]
 results[, effect_threshold := fifelse(outcome_type == "binary", 0.60, 0.20)]
 results[, effect_crossing := is.finite(effect) & effect >= effect_threshold]
 
-provenance <- unique(fread("results/tables/endpoint_dictionary.csv")[,
-  c(keys, "measurement_class", "same_histology_modality"), with = FALSE])
-if (anyDuplicated(provenance, by = keys)) stop("Duplicate endpoint provenance")
+provenance <- unique(fread("results/tables/endpoint_definition_dictionary.csv")[,
+  c("outcome_type", "family", "endpoint", "source",
+    "measurement_class", "same_histology_modality"), with = FALSE])
+if (anyDuplicated(provenance,
+                  by = c("outcome_type", "family", "endpoint", "source"))) {
+  stop("Duplicate endpoint provenance")
+}
 
 wide <- dcast(
   results[, c(keys, "n", "positive", "negative", "foundation_model",
@@ -40,7 +53,9 @@ expected <- unique(results[, ..keys])
 if (nrow(wide) != nrow(expected)) {
   stop("Casting lost a cancer-endpoint task; check NA class-count keys")
 }
-catalogue <- merge(wide, provenance, by = keys, all.x = TRUE, sort = FALSE)
+catalogue <- merge(wide, provenance,
+                   by = c("outcome_type", "family", "endpoint", "source"),
+                   all.x = TRUE, sort = FALSE)
 if (nrow(catalogue) != nrow(expected) || anyNA(catalogue$measurement_class)) {
   stop("Endpoint provenance join is incomplete")
 }
@@ -61,21 +76,25 @@ catalogue[, crossing_representations := vapply(seq_len(.N), function(i) {
 }, character(1))]
 catalogue[, representation_coverage := fifelse(
   tumor_type == "BRCA", "TITAN and Giga-SSL only", "all three")]
+catalogue[, exploratory_chol_eligibility_exception := tumor_type == "CHOL"]
 setorder(catalogue, tumor_type, outcome_type, family, endpoint)
 
 positive <- catalogue[any_effect_crossing == TRUE]
 cross_modal <- positive[same_histology_modality == FALSE]
 if (nrow(matched) != 3L * 3389L || nrow(brca) != 2L * 139L ||
-    nrow(catalogue) != 3528L || nrow(positive) != 1076L ||
-    nrow(cross_modal) != 1064L ||
+    nrow(chol) != 3L * 109L ||
+    nrow(catalogue) != 3637L || nrow(positive) != 1084L ||
+    nrow(cross_modal) != 1072L ||
     nrow(positive[tumor_type == "BRCA"]) != 72L ||
-    nrow(cross_modal[tumor_type == "BRCA"]) != 71L) {
+    nrow(cross_modal[tumor_type == "BRCA"]) != 71L ||
+    nrow(positive[tumor_type == "CHOL"]) != 8L) {
   stop("Catalogue totals do not reconcile: ", paste(c(
-    matched = nrow(matched), brca = nrow(brca),
+    matched = nrow(matched), brca = nrow(brca), chol = nrow(chol),
     eligible = nrow(catalogue), crossing = nrow(positive),
     cross_modal = nrow(cross_modal),
     brca_crossing = nrow(positive[tumor_type == "BRCA"]),
-    brca_cross_modal = nrow(cross_modal[tumor_type == "BRCA"])
+    brca_cross_modal = nrow(cross_modal[tumor_type == "BRCA"]),
+    chol_crossing = nrow(positive[tumor_type == "CHOL"])
   ), collapse = ", "))
 }
 

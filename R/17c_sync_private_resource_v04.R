@@ -22,6 +22,11 @@ if (registry[cancer_type == "BRCA", .N] != 125L ||
     registry[cancer_type == "BRCA" & foundation_model == "ProvGigaPath", .N] != 0L) {
   stop("Private registry does not contain the expected TITAN/Giga-SSL BRCA models")
 }
+if (registry[cancer_type == "CHOL", .N] != 10L ||
+    registry[cancer_type == "CHOL" & foundation_model == "TITAN", .N] != 8L ||
+    registry[cancer_type == "CHOL" & foundation_model == "ProvGigaPath", .N] != 2L) {
+  stop("Private registry does not contain the expected exploratory CHOL models")
+}
 for (model in models) {
   rows <- registry[foundation_model == model]
   paths <- file.path(root, rows$file)
@@ -52,12 +57,14 @@ for (model in models) {
       matched_patients = 8241L,
       matched_slide_identifiers = 10165L,
       additional_brca_patients = if (model == "ProvGigaPath") 0L else 1053L,
+      exploratory_chol_patients = 38L,
       aggregation = "mean"
     ),
     provenance = list(
       analysis = paste0("exact-common-slide three-way TCGA benchmark",
                         if (model == "ProvGigaPath") "" else
-                          " plus matched TITAN/Giga-SSL BRCA extension"),
+                          " plus matched TITAN/Giga-SSL BRCA extension",
+                        " plus exploratory CHOL eligibility exception"),
       fastPLS_version = "0.4",
       selection = "cancer-specific Q2 >= 0.20 or AUROC >= 0.60 in the available representation",
       external_validation = FALSE,
