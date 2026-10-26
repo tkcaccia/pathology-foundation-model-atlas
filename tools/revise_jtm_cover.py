@@ -19,7 +19,7 @@ replacements = {
          "cancer-specific genomic and immune-related features that can be "
          "estimated from haematoxylin-and-eosin images across 32 TCGA cancers. "
          "For the 30 cancers represented by all three resources, we compared "
-         "the models using the same patients, slides, outcomes and validation "
+         "their slide representations using the same patients, slides, outcomes and validation "
          "folds. Separate analyses retained breast cancer and "
          "cholangiocarcinoma in the cancer-specific atlas."),
     13: ("The study gives readers a practical inventory of features reaching "
